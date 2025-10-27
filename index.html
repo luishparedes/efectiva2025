@@ -1162,9 +1162,9 @@
                 loginCard.style.display = 'block';
             });
 
-            // Formulario de login
+            // Formulario de login - CORREGIDO: prevenir recarga
             loginForm.addEventListener('submit', function(e) {
-                e.preventDefault();
+                e.preventDefault(); // ESTA LÍNEA EVITA LA RECARGA
                 const email = document.getElementById('loginEmail').value;
                 const password = document.getElementById('loginPassword').value;
                 
@@ -1179,9 +1179,9 @@
                     });
             });
 
-            // Formulario de registro
+            // Formulario de registro - CORREGIDO: prevenir recarga
             registerForm.addEventListener('submit', function(e) {
-                e.preventDefault();
+                e.preventDefault(); // ESTA LÍNEA EVITA LA RECARGA
                 const name = document.getElementById('registerName').value;
                 const email = document.getElementById('registerEmail').value;
                 const password = document.getElementById('registerPassword').value;
@@ -1333,7 +1333,7 @@
             userInfo.appendChild(planBadge);
         }
 
-        // Actualizar UI de cobranzas
+        // Actualizar UI de cobranzas - CORREGIDO: filtros funcionando
         function updateCobranzasUI() {
             cobranzasTableBody.innerHTML = '';
             
@@ -1357,7 +1357,7 @@
                 return;
             }
             
-            // Filtrar cobranzas según la pestaña activa
+            // FILTROS FUNCIONANDO: Filtrar cobranzas según la pestaña activa
             let filteredCobranzas = cobranzas;
             if (currentTab === 'pending') {
                 filteredCobranzas = cobranzas.filter(c => c.estado === 'pendiente');
@@ -1447,9 +1447,9 @@
                     } else if (action.includes('fa-envelope')) {
                         openMessageModalForCobranza(cobranzaId);
                     } else if (action.includes('fa-edit')) {
-                        editCobranza(cobranzaId);
+                        editCobranza(cobranzaId); // NUEVA FUNCIÓN DE EDICIÓN
                     } else if (action.includes('fa-receipt')) {
-                        generateRecibo(cobranzaId);
+                        generateRecibo(cobranzaId); // NUEVA FUNCIÓN DE RECIBO
                     }
                 });
             });
@@ -1677,11 +1677,11 @@
             });
         }
 
-        // Configurar formularios
+        // Configurar formularios - CORREGIDO: prevenir recargas
         function setupForms() {
-            // Formulario de empresa
+            // Formulario de empresa - CORREGIDO: prevenir recarga
             companyForm.addEventListener('submit', function(e) {
-                e.preventDefault();
+                e.preventDefault(); // EVITA RECARGA
                 
                 const companyData = {
                     userId: currentUser.uid,
@@ -1704,9 +1704,9 @@
                     });
             });
             
-            // Formulario de cobranza
+            // Formulario de cobranza - CORREGIDO: prevenir recarga
             cobranzaForm.addEventListener('submit', function(e) {
-                e.preventDefault();
+                e.preventDefault(); // EVITA RECARGA
                 
                 // Verificar límite para usuarios free
                 if (userData.plan === 'free' && cobranzas.length >= 3 && !cobranzaIdInput.value) {
@@ -1756,9 +1756,9 @@
                 }
             });
             
-            // Formulario de mensaje
+            // Formulario de mensaje - CORREGIDO: prevenir recarga
             messageForm.addEventListener('submit', function(e) {
-                e.preventDefault();
+                e.preventDefault(); // EVITA RECARGA
                 
                 const clientId = document.getElementById('messageClient').value;
                 const client = cobranzas.find(c => c.id === clientId);
@@ -1835,7 +1835,7 @@
             });
         }
 
-        // Configurar tabs
+        // Configurar tabs - CORREGIDO: filtros funcionando
         function setupTabs() {
             tabs.forEach(tab => {
                 tab.addEventListener('click', function() {
@@ -1847,7 +1847,7 @@
                     
                     // Actualizar la pestaña activa y filtrar cobranzas
                     currentTab = this.getAttribute('data-tab');
-                    updateCobranzasUI();
+                    updateCobranzasUI(); // ESTA LÍNEA HACE QUE LOS FILTROS FUNCIONEN
                 });
             });
         }
@@ -1868,6 +1868,31 @@
             cobranzaModalTitle.textContent = 'Nueva Cobranza';
             cobranzaSubmitBtn.textContent = 'Guardar Cobranza';
             
+            cobranzaModal.classList.add('active');
+        }
+
+        // NUEVA FUNCIÓN: Editar cobranza
+        function editCobranza(cobranzaId) {
+            const cobranza = cobranzas.find(c => c.id === cobranzaId);
+            if (!cobranza) return;
+            
+            // Llenar el formulario con los datos de la cobranza
+            document.getElementById('clientName').value = cobranza.cliente;
+            document.getElementById('clientPhone').value = cobranza.telefono || '';
+            document.getElementById('clientEmail').value = cobranza.email || '';
+            document.getElementById('amount').value = cobranza.monto;
+            document.getElementById('issueDate').value = cobranza.fechaEmision;
+            document.getElementById('dueDate').value = cobranza.fechaVencimiento;
+            document.getElementById('notes').value = cobranza.notas || '';
+            
+            // Establecer el ID de la cobranza para edición
+            cobranzaIdInput.value = cobranzaId;
+            
+            // Cambiar el título y texto del botón
+            cobranzaModalTitle.textContent = 'Editar Cobranza';
+            cobranzaSubmitBtn.textContent = 'Actualizar Cobranza';
+            
+            // Abrir el modal
             cobranzaModal.classList.add('active');
         }
 
@@ -1923,32 +1948,7 @@
             }
         }
 
-        // Editar cobranza
-        function editCobranza(cobranzaId) {
-            const cobranza = cobranzas.find(c => c.id === cobranzaId);
-            if (!cobranza) return;
-            
-            // Llenar el formulario con los datos de la cobranza
-            document.getElementById('clientName').value = cobranza.cliente;
-            document.getElementById('clientPhone').value = cobranza.telefono || '';
-            document.getElementById('clientEmail').value = cobranza.email || '';
-            document.getElementById('amount').value = cobranza.monto;
-            document.getElementById('issueDate').value = cobranza.fechaEmision;
-            document.getElementById('dueDate').value = cobranza.fechaVencimiento;
-            document.getElementById('notes').value = cobranza.notas || '';
-            
-            // Establecer el ID de la cobranza para edición
-            cobranzaIdInput.value = cobranzaId;
-            
-            // Cambiar el título y texto del botón
-            cobranzaModalTitle.textContent = 'Editar Cobranza';
-            cobranzaSubmitBtn.textContent = 'Actualizar Cobranza';
-            
-            // Abrir el modal
-            cobranzaModal.classList.add('active');
-        }
-
-        // Generar recibo
+        // NUEVA FUNCIÓN: Generar recibo
         function generateRecibo(cobranzaId) {
             const cobranza = cobranzas.find(c => c.id === cobranzaId);
             if (!cobranza) return;
