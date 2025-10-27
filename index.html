@@ -7,65 +7,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
-    <script type="module">
-        // Importar Firebase
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { 
-            getAuth, 
-            createUserWithEmailAndPassword, 
-            signInWithEmailAndPassword, 
-            signOut,
-            onAuthStateChanged
-        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { 
-            getFirestore, 
-            collection, 
-            addDoc, 
-            getDocs, 
-            query, 
-            where, 
-            updateDoc, 
-            doc, 
-            onSnapshot,
-            orderBy,
-            limit
-        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-        // Configuración de Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyCqDkYDT2RDNkYOAvUoAd8RMT7AQ37EVWg",
-            authDomain: "quake-cobranzas.firebaseapp.com",
-            projectId: "quake-cobranzas",
-            storageBucket: "quake-cobranzas.firebasestorage.app",
-            messagingSenderId: "278570669788",
-            appId: "1:278570669788:web:50fba7fce26e0489784619",
-            databaseURL: "https://quake-cobranzas-default-rtdb.firebaseio.com/"
-        };
-
-        // Inicializar Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        // Hacer disponibles globalmente
-        window.firebaseAuth = auth;
-        window.firebaseDb = db;
-        window.firebaseApp = app;
-        window.firebaseCreateUser = createUserWithEmailAndPassword;
-        window.firebaseSignIn = signInWithEmailAndPassword;
-        window.firebaseSignOut = signOut;
-        window.firebaseOnAuthStateChanged = onAuthStateChanged;
-        window.firebaseAddDoc = addDoc;
-        window.firebaseGetDocs = getDocs;
-        window.firebaseQuery = query;
-        window.firebaseWhere = where;
-        window.firebaseUpdateDoc = updateDoc;
-        window.firebaseDoc = doc;
-        window.firebaseOnSnapshot = onSnapshot;
-        window.firebaseOrderBy = orderBy;
-        window.firebaseLimit = limit;
-        window.firebaseCollection = collection;
-    </script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
     <style>
         :root {
             --primary: #007AFF;
@@ -1020,6 +967,22 @@
     </div>
 
     <script>
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCqDkYDT2RDNkYOAvUoAd8RMT7AQ37EVWg",
+            authDomain: "quake-cobranzas.firebaseapp.com",
+            databaseURL: "https://quake-cobranzas-default-rtdb.firebaseio.com",
+            projectId: "quake-cobranzas",
+            storageBucket: "quake-cobranzas.firebasestorage.app",
+            messagingSenderId: "278570669788",
+            appId: "1:278570669788:web:50fba7fce26e0489784619"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+
         // Variables globales
         let currentUser = null;
         let userData = null;
@@ -1071,7 +1034,7 @@
             setupAuthListeners();
             
             // Verificar estado de autenticación
-            window.firebaseOnAuthStateChanged(window.firebaseAuth, (user) => {
+            auth.onAuthStateChanged((user) => {
                 if (user) {
                     currentUser = user;
                     loadUserData(user.uid);
@@ -1104,7 +1067,7 @@
                 const email = document.getElementById('loginEmail').value;
                 const password = document.getElementById('loginPassword').value;
                 
-                window.firebaseSignIn(window.firebaseAuth, email, password)
+                auth.signInWithEmailAndPassword(email, password)
                     .then((userCredential) => {
                         // Login exitoso
                         console.log('Usuario autenticado:', userCredential.user);
@@ -1122,14 +1085,13 @@
                 const email = document.getElementById('registerEmail').value;
                 const password = document.getElementById('registerPassword').value;
                 
-                window.firebaseCreateUser(window.firebaseAuth, email, password)
+                auth.createUserWithEmailAndPassword(email, password)
                     .then((userCredential) => {
                         // Usuario creado exitosamente
                         const user = userCredential.user;
                         
-                        // Guardar datos adicionales del usuario en Firestore
-                        return window.firebaseAddDoc(window.firebaseCollection(window.firebaseDb, 'users'), {
-                            userId: user.uid,
+                        // Guardar datos adicionales del usuario en Realtime Database
+                        return database.ref('users/' + user.uid).set({
                             email: user.email,
                             nombre: name,
                             plan: 'free',
@@ -1169,7 +1131,7 @@
             });
 
             logoutBtn.addEventListener('click', function() {
-                window.firebaseSignOut(window.firebaseAuth)
+                auth.signOut()
                     .then(() => {
                         console.log('Sesión cerrada');
                     })
@@ -1179,19 +1141,14 @@
             });
         }
 
-        // Cargar datos del usuario desde Firestore
+        // Cargar datos del usuario desde Realtime Database
         function loadUserData(userId) {
             // Cargar datos del usuario
-            const userQuery = window.firebaseQuery(
-                window.firebaseCollection(window.firebaseDb, 'users'),
-                window.firebaseWhere('userId', '==', userId)
-            );
-            
-            window.firebaseGetDocs(userQuery)
-                .then((querySnapshot) => {
-                    if (!querySnapshot.empty) {
-                        userData = querySnapshot.docs[0].data();
-                        userData.id = querySnapshot.docs[0].id;
+            database.ref('users/' + userId).once('value')
+                .then((snapshot) => {
+                    if (snapshot.exists()) {
+                        userData = snapshot.val();
+                        userData.userId = userId;
                         
                         // Actualizar UI con datos del usuario
                         updateUserUI();
@@ -1218,16 +1175,11 @@
 
         // Cargar datos de la empresa
         function loadCompanyData(userId) {
-            const companyQuery = window.firebaseQuery(
-                window.firebaseCollection(window.firebaseDb, 'empresas'),
-                window.firebaseWhere('userId', '==', userId)
-            );
-            
-            window.firebaseGetDocs(companyQuery)
-                .then((querySnapshot) => {
-                    if (!querySnapshot.empty) {
-                        companyData = querySnapshot.docs[0].data();
-                        companyData.id = querySnapshot.docs[0].id;
+            database.ref('empresas/' + userId).once('value')
+                .then((snapshot) => {
+                    if (snapshot.exists()) {
+                        companyData = snapshot.val();
+                        companyData.userId = userId;
                         
                         // Rellenar formulario de empresa
                         document.getElementById('companyName').value = companyData.nombre || '';
@@ -1244,17 +1196,16 @@
 
         // Cargar cobranzas del usuario
         function loadCobranzas(userId) {
-            const cobranzasQuery = window.firebaseQuery(
-                window.firebaseCollection(window.firebaseDb, 'cobranzas'),
-                window.firebaseWhere('userId', '==', userId),
-                window.firebaseOrderBy('fechaEmision', 'desc')
-            );
-            
-            window.firebaseOnSnapshot(cobranzasQuery, (querySnapshot) => {
+            database.ref('cobranzas').orderByChild('userId').equalTo(userId).on('value', (snapshot) => {
                 cobranzas = [];
-                querySnapshot.forEach((doc) => {
-                    cobranzas.push({ id: doc.id, ...doc.data() });
+                snapshot.forEach((childSnapshot) => {
+                    const cobranza = childSnapshot.val();
+                    cobranza.id = childSnapshot.key;
+                    cobranzas.push(cobranza);
                 });
+                
+                // Ordenar por fecha de emisión (más reciente primero)
+                cobranzas.sort((a, b) => new Date(b.fechaEmision) - new Date(a.fechaEmision));
                 
                 updateCobranzasUI();
                 updateDashboardStats();
@@ -1544,37 +1495,15 @@
                     fechaActualizacion: new Date().toISOString()
                 };
                 
-                // Guardar o actualizar datos de la empresa
-                if (window.companyData && window.companyData.id) {
-                    // Actualizar
-                    window.firebaseUpdateDoc(
-                        window.firebaseDoc(window.firebaseDb, 'empresas', window.companyData.id),
-                        companyData
-                    )
-                    .then(() => {
-                        alert('Datos de empresa actualizados correctamente');
-                    })
-                    .catch((error) => {
-                        alert('Error al actualizar datos: ' + error.message);
-                    });
-                } else {
-                    // Crear nuevo
-                    window.firebaseAddDoc(
-                        window.firebaseCollection(window.firebaseDb, 'empresas'),
-                        companyData
-                    )
+                // Guardar datos de la empresa
+                database.ref('empresas/' + currentUser.uid).set(companyData)
                     .then(() => {
                         alert('Datos de empresa guardados correctamente');
-                    loadCompanyData(currentUser.uid);
-                    window.companyData = companyData;
-                    window.companyData.id = docRef.id;
-                    cobranzaModal.classList.remove('active');
-                    messageModal.classList.remove('active');
+                        loadCompanyData(currentUser.uid);
                     })
                     .catch((error) => {
                         alert('Error al guardar datos: ' + error.message);
                     });
-                }
             });
             
             // Formulario de cobranza
@@ -1600,18 +1529,16 @@
                     fechaCreacion: new Date().toISOString()
                 };
                 
-                window.firebaseAddDoc(
-                    window.firebaseCollection(window.firebaseDb, 'cobranzas'),
-                    cobranzaData
-                )
-                .then(() => {
-                    alert('Cobranza agregada correctamente');
-                    cobranzaForm.reset();
-                    cobranzaModal.classList.remove('active');
-                })
-                .catch((error) => {
-                    alert('Error al agregar cobranza: ' + error.message);
-                });
+                // Guardar cobranza
+                database.ref('cobranzas').push(cobranzaData)
+                    .then(() => {
+                        alert('Cobranza agregada correctamente');
+                        cobranzaForm.reset();
+                        cobranzaModal.classList.remove('active');
+                    })
+                    .catch((error) => {
+                        alert('Error al agregar cobranza: ' + error.message);
+                    });
             });
             
             // Formulario de mensaje
@@ -1637,20 +1564,16 @@
                     estado: 'enviado'
                 };
                 
-                // Aquí iría la lógica para enviar el mensaje por WhatsApp o email
-                // Por ahora, solo lo guardamos en la base de datos
-                window.firebaseAddDoc(
-                    window.firebaseCollection(window.firebaseDb, 'mensajes'),
-                    messageData
-                )
-                .then(() => {
-                    alert('Mensaje enviado correctamente');
-                    messageForm.reset();
-                    messageModal.classList.remove('active');
-                })
-                .catch((error) => {
-                    alert('Error al enviar mensaje: ' + error.message);
-                });
+                // Guardar mensaje
+                database.ref('mensajes').push(messageData)
+                    .then(() => {
+                        alert('Mensaje enviado correctamente');
+                        messageForm.reset();
+                        messageModal.classList.remove('active');
+                    })
+                    .catch((error) => {
+                        alert('Error al enviar mensaje: ' + error.message);
+                    });
             });
             
             // Cambiar contenido del mensaje según el tipo seleccionado
@@ -1781,10 +1704,9 @@
         // Marcar cobranza como pagada
         function markAsPaid(cobranzaId) {
             if (confirm('¿Estás seguro de que quieres marcar esta cobranza como pagada?')) {
-                window.firebaseUpdateDoc(
-                    window.firebaseDoc(window.firebaseDb, 'cobranzas', cobranzaId),
-                    { estado: 'pagado' }
-                )
+                database.ref('cobranzas/' + cobranzaId).update({
+                    estado: 'pagado'
+                })
                 .then(() => {
                     alert('Cobranza marcada como pagada');
                 })
@@ -1797,12 +1719,7 @@
         // Eliminar cobranza
         function deleteCobranza(cobranzaId) {
             if (confirm('¿Estás seguro de que quieres eliminar esta cobranza?')) {
-                // Nota: En una aplicación real, usarías deleteDoc() de Firebase
-                // Por simplicidad, aquí marcamos la cobranza como eliminada
-                window.firebaseUpdateDoc(
-                    window.firebaseDoc(window.firebaseDb, 'cobranzas', cobranzaId),
-                    { estado: 'eliminado' }
-                )
+                database.ref('cobranzas/' + cobranzaId).remove()
                 .then(() => {
                     alert('Cobranza eliminada');
                 })
@@ -1814,15 +1731,13 @@
 
         // Cargar datos para el panel de administración
         function loadAdminData() {
-            const usersQuery = window.firebaseQuery(
-                window.firebaseCollection(window.firebaseDb, 'users')
-            );
-            
-            window.firebaseGetDocs(usersQuery)
-                .then((querySnapshot) => {
+            database.ref('users').once('value')
+                .then((snapshot) => {
                     const users = [];
-                    querySnapshot.forEach((doc) => {
-                        users.push({ id: doc.id, ...doc.data() });
+                    snapshot.forEach((childSnapshot) => {
+                        const user = childSnapshot.val();
+                        user.id = childSnapshot.key;
+                        users.push(user);
                     });
                     
                     updateAdminUI(users);
@@ -1853,9 +1768,11 @@
             document.getElementById('proUsers').textContent = users.filter(u => u.plan === 'pro').length;
             document.getElementById('inactiveUsers').textContent = users.filter(u => !u.activo).length;
             
-            // Obtener total de cobranzas (esto sería más eficiente con una consulta agregada)
-            // Por simplicidad, mostramos un placeholder
-            document.getElementById('totalCobranzasAdmin').textContent = '...';
+            // Contar total de cobranzas
+            database.ref('cobranzas').once('value')
+                .then((snapshot) => {
+                    document.getElementById('totalCobranzasAdmin').textContent = snapshot.numChildren();
+                });
             
             users.forEach(user => {
                 const tr = document.createElement('tr');
@@ -1865,7 +1782,7 @@
                     <td>${user.email}</td>
                     <td><span class="plan-badge plan-${user.plan}">${user.plan === 'free' ? 'Free' : 'Pro'}</span></td>
                     <td>${user.activo ? 'Activo' : 'Inactivo'}</td>
-                    <td>...</td>
+                    <td class="user-cobranzas-count">Cargando...</td>
                     <td>
                         <div class="action-buttons">
                             <button class="btn-icon toggle-active" data-id="${user.id}" data-active="${user.activo}" title="${user.activo ? 'Desactivar' : 'Activar'}">
@@ -1879,6 +1796,13 @@
                 `;
                 
                 usersTableBody.appendChild(tr);
+                
+                // Contar cobranzas por usuario
+                database.ref('cobranzas').orderByChild('userId').equalTo(user.id).once('value')
+                    .then((snapshot) => {
+                        const count = snapshot.numChildren();
+                        tr.querySelector('.user-cobranzas-count').textContent = count;
+                    });
             });
             
             // Añadir event listeners a los botones de acción
@@ -1887,10 +1811,9 @@
                     const userId = this.getAttribute('data-id');
                     const currentActive = this.getAttribute('data-active') === 'true';
                     
-                    window.firebaseUpdateDoc(
-                        window.firebaseDoc(window.firebaseDb, 'users', userId),
-                        { activo: !currentActive }
-                    )
+                    database.ref('users/' + userId).update({
+                        activo: !currentActive
+                    })
                     .then(() => {
                         alert(`Usuario ${!currentActive ? 'activado' : 'desactivado'} correctamente`);
                         loadAdminData(); // Recargar datos
@@ -1907,10 +1830,9 @@
                     const currentPlan = this.getAttribute('data-plan');
                     const newPlan = currentPlan === 'free' ? 'pro' : 'free';
                     
-                    window.firebaseUpdateDoc(
-                        window.firebaseDoc(window.firebaseDb, 'users', userId),
-                        { plan: newPlan }
-                    )
+                    database.ref('users/' + userId).update({
+                        plan: newPlan
+                    })
                     .then(() => {
                         alert(`Usuario actualizado a plan ${newPlan}`);
                         loadAdminData(); // Recargar datos
