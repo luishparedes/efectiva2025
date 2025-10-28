@@ -80,6 +80,9 @@ const messageChannel = document.getElementById('messageChannel');
 const messageIcon = document.getElementById('messageIcon');
 const messageText = document.getElementById('messageText');
 
+// CORRECCIÓN: Input de teléfono para permitir guiones
+const clientPhoneInput = document.getElementById('clientPhone');
+
 // Inicialización de la aplicación
 document.addEventListener('DOMContentLoaded', function() {
     // Configurar monitoreo de conexión
@@ -94,6 +97,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Configurar cambio de ícono en mensajes
     setupMessageChannelListener();
     
+    // CORRECCIÓN: Configurar input de teléfono para permitir guiones
+    setupPhoneInput();
+    
     // Verificar estado de autenticación
     auth.onAuthStateChanged((user) => {
         if (user) {
@@ -107,18 +113,59 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// CORRECCIÓN: Configurar input de teléfono para permitir guiones
+function setupPhoneInput() {
+    if (clientPhoneInput) {
+        clientPhoneInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/[^\d-]/g, '');
+            
+            // Permitir formato con guiones
+            if (value.length <= 12) {
+                // Formato: 412-1234567 o 412-123-4567
+                if (value.length > 3 && !value.includes('-')) {
+                    value = value.substring(0, 3) + '-' + value.substring(3);
+                }
+                if (value.length > 7 && value.split('-').length === 2) {
+                    const parts = value.split('-');
+                    if (parts[1].length > 3) {
+                        value = parts[0] + '-' + parts[1].substring(0, 3) + '-' + parts[1].substring(3);
+                    }
+                }
+            } else {
+                value = value.substring(0, 12);
+            }
+            
+            e.target.value = value;
+        });
+        
+        clientPhoneInput.addEventListener('keydown', function(e) {
+            // Permitir teclas de control, números y guión
+            if (
+                e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Tab' || 
+                e.key === 'ArrowLeft' || e.key === 'ArrowRight' ||
+                (e.key >= '0' && e.key <= '9') || e.key === '-'
+            ) {
+                return;
+            }
+            e.preventDefault();
+        });
+    }
+}
+
 // Configurar cambio de ícono en mensajes
 function setupMessageChannelListener() {
-    messageChannel.addEventListener('change', function() {
-        const channel = this.value;
-        if (channel === 'whatsapp') {
-            messageIcon.className = 'fab fa-whatsapp';
-            messageText.textContent = 'Enviar por WhatsApp';
-        } else {
-            messageIcon.className = 'fas fa-envelope';
-            messageText.textContent = 'Copiar para Email';
-        }
-    });
+    if (messageChannel) {
+        messageChannel.addEventListener('change', function() {
+            const channel = this.value;
+            if (channel === 'whatsapp') {
+                messageIcon.className = 'fab fa-whatsapp';
+                messageText.textContent = 'Enviar por WhatsApp';
+            } else {
+                messageIcon.className = 'fas fa-envelope';
+                messageText.textContent = 'Copiar para Email';
+            }
+        });
+    }
 }
 
 // Configurar monitoreo de conexión
@@ -130,7 +177,7 @@ function setupConnectionMonitoring() {
             connectionStatus.textContent = 'Conectado';
             connectionStatus.className = 'connection-status connection-online';
             connectionStatus.style.display = 'block';
-            adminConnectionAlert.style.display = 'none';
+            if (adminConnectionAlert) adminConnectionAlert.style.display = 'none';
             
             setTimeout(() => {
                 connectionStatus.style.display = 'none';
@@ -139,7 +186,7 @@ function setupConnectionMonitoring() {
             connectionStatus.textContent = 'Sin conexión';
             connectionStatus.className = 'connection-status connection-offline';
             connectionStatus.style.display = 'block';
-            adminConnectionAlert.style.display = 'flex';
+            if (adminConnectionAlert) adminConnectionAlert.style.display = 'flex';
         }
     });
 }
@@ -169,7 +216,10 @@ function showNotification(message, type = 'info') {
         <span>${message}</span>
     `;
     
-    document.querySelector('.container').insertBefore(notification, document.querySelector('.container').firstChild);
+    const container = document.querySelector('.container');
+    if (container) {
+        container.insertBefore(notification, container.firstChild);
+    }
     
     setTimeout(() => {
         notification.remove();
@@ -178,10 +228,12 @@ function showNotification(message, type = 'info') {
 
 // Mostrar notificación de copiado
 function showCopyNotification() {
-    copyNotification.classList.add('show');
-    setTimeout(() => {
-        copyNotification.classList.remove('show');
-    }, 3000);
+    if (copyNotification) {
+        copyNotification.classList.add('show');
+        setTimeout(() => {
+            copyNotification.classList.remove('show');
+        }, 3000);
+    }
 }
 
 // Copiar texto al portapapeles
@@ -204,98 +256,112 @@ function copyToClipboard(text) {
 // Configurar listeners de autenticación
 function setupAuthListeners() {
     // Switch entre login y registro
-    switchToRegister.addEventListener('click', function(e) {
-        e.preventDefault();
-        loginCard.style.display = 'none';
-        registerCard.style.display = 'block';
-    });
+    if (switchToRegister) {
+        switchToRegister.addEventListener('click', function(e) {
+            e.preventDefault();
+            loginCard.style.display = 'none';
+            registerCard.style.display = 'block';
+        });
+    }
 
-    switchToLogin.addEventListener('click', function(e) {
-        e.preventDefault();
-        registerCard.style.display = 'none';
-        loginCard.style.display = 'block';
-    });
+    if (switchToLogin) {
+        switchToLogin.addEventListener('click', function(e) {
+            e.preventDefault();
+            registerCard.style.display = 'none';
+            loginCard.style.display = 'block';
+        });
+    }
 
     // Formulario de login
-    loginForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const email = document.getElementById('loginEmail').value;
-        const password = document.getElementById('loginPassword').value;
-        
-        auth.signInWithEmailAndPassword(email, password)
-            .then((userCredential) => {
-                console.log('Usuario autenticado:', userCredential.user);
-                loginForm.reset();
-                showNotification('Sesión iniciada correctamente', 'success');
-            })
-            .catch((error) => {
-                showNotification('Error al iniciar sesión: ' + error.message, 'danger');
-            });
-    });
+    if (loginForm) {
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    console.log('Usuario autenticado:', userCredential.user);
+                    loginForm.reset();
+                    showNotification('Sesión iniciada correctamente', 'success');
+                })
+                .catch((error) => {
+                    showNotification('Error al iniciar sesión: ' + error.message, 'danger');
+                });
+        });
+    }
 
     // Formulario de registro
-    registerForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const name = document.getElementById('registerName').value;
-        const email = document.getElementById('registerEmail').value;
-        const password = document.getElementById('registerPassword').value;
-        
-        auth.createUserWithEmailAndPassword(email, password)
-            .then((userCredential) => {
-                const user = userCredential.user;
-                
-                return database.ref('users/' + user.uid).set({
-                    email: user.email,
-                    nombre: name,
-                    plan: 'free',
-                    activo: true,
-                    fechaRegistro: new Date().toISOString()
+    if (registerForm) {
+        registerForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    
+                    return database.ref('users/' + user.uid).set({
+                        email: user.email,
+                        nombre: name,
+                        plan: 'free',
+                        activo: true,
+                        fechaRegistro: new Date().toISOString()
+                    });
+                })
+                .then(() => {
+                    console.log('Usuario registrado exitosamente');
+                    registerForm.reset();
+                    if (switchToLogin) switchToLogin.click();
+                    showNotification('Cuenta creada exitosamente', 'success');
+                })
+                .catch((error) => {
+                    showNotification('Error al registrar usuario: ' + error.message, 'danger');
                 });
-            })
-            .then(() => {
-                console.log('Usuario registrado exitosamente');
-                registerForm.reset();
-                switchToLogin.click();
-                showNotification('Cuenta creada exitosamente', 'success');
-            })
-            .catch((error) => {
-                showNotification('Error al registrar usuario: ' + error.message, 'danger');
-            });
-    });
+        });
+    }
 
     // Botones de login/registro/logout
-    loginBtn.addEventListener('click', function() {
-        authContainer.style.display = 'flex';
-        dashboard.style.display = 'none';
-        cobranzasSection.style.display = 'none';
-        mensajesSection.style.display = 'none';
-        empresaSection.style.display = 'none';
-        adminSection.style.display = 'none';
-        loginCard.style.display = 'block';
-        registerCard.style.display = 'none';
-    });
+    if (loginBtn) {
+        loginBtn.addEventListener('click', function() {
+            authContainer.style.display = 'flex';
+            dashboard.style.display = 'none';
+            cobranzasSection.style.display = 'none';
+            mensajesSection.style.display = 'none';
+            empresaSection.style.display = 'none';
+            adminSection.style.display = 'none';
+            loginCard.style.display = 'block';
+            registerCard.style.display = 'none';
+        });
+    }
 
-    registerBtn.addEventListener('click', function() {
-        authContainer.style.display = 'flex';
-        loginCard.style.display = 'none';
-        registerCard.style.display = 'block';
-        dashboard.style.display = 'none';
-        cobranzasSection.style.display = 'none';
-        mensajesSection.style.display = 'none';
-        empresaSection.style.display = 'none';
-        adminSection.style.display = 'none';
-    });
+    if (registerBtn) {
+        registerBtn.addEventListener('click', function() {
+            authContainer.style.display = 'flex';
+            loginCard.style.display = 'none';
+            registerCard.style.display = 'block';
+            dashboard.style.display = 'none';
+            cobranzasSection.style.display = 'none';
+            mensajesSection.style.display = 'none';
+            empresaSection.style.display = 'none';
+            adminSection.style.display = 'none';
+        });
+    }
 
-    logoutBtn.addEventListener('click', function() {
-        auth.signOut()
-            .then(() => {
-                console.log('Sesión cerrada');
-                showNotification('Sesión cerrada correctamente', 'success');
-            })
-            .catch((error) => {
-                console.error('Error al cerrar sesión:', error);
-            });
-    });
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
+            auth.signOut()
+                .then(() => {
+                    console.log('Sesión cerrada');
+                    showNotification('Sesión cerrada correctamente', 'success');
+                })
+                .catch((error) => {
+                    console.error('Error al cerrar sesión:', error);
+                });
+        });
+    }
 }
 
 // Cargar datos del usuario desde Realtime Database
@@ -368,14 +434,14 @@ function loadCobranzas(userId) {
         updateDashboardStats();
         
         if (userData.plan === 'free' && cobranzas.length >= 3) {
-            freeLimitAlert.style.display = 'flex';
+            if (freeLimitAlert) freeLimitAlert.style.display = 'flex';
         } else {
-            freeLimitAlert.style.display = 'none';
+            if (freeLimitAlert) freeLimitAlert.style.display = 'none';
         }
     });
 }
 
-// Cargar actividad reciente
+// CORRECCIÓN: Mejorar carga de actividad reciente
 function loadRecentActivity(userId) {
     // Limpiar actividades antiguas (más de 24 horas)
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -383,8 +449,11 @@ function loadRecentActivity(userId) {
     database.ref('actividades')
         .orderByChild('userId')
         .equalTo(userId)
-        .on('value', (snapshot) => {
+        .once('value') // Cambiado a once para evitar múltiples llamadas
+        .then((snapshot) => {
             const activities = [];
+            const deletePromises = [];
+            
             snapshot.forEach((childSnapshot) => {
                 const activity = childSnapshot.val();
                 activity.id = childSnapshot.key;
@@ -394,18 +463,28 @@ function loadRecentActivity(userId) {
                     activities.push(activity);
                 } else {
                     // Eliminar actividad antigua
-                    database.ref('actividades/' + childSnapshot.key).remove();
+                    deletePromises.push(database.ref('actividades/' + childSnapshot.key).remove());
                 }
+            });
+            
+            // Ejecutar todas las eliminaciones
+            Promise.all(deletePromises).catch(error => {
+                console.error('Error eliminando actividades antiguas:', error);
             });
             
             activities.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
             updateRecentActivityUI(activities);
+        })
+        .catch((error) => {
+            console.error('Error al cargar actividades:', error);
+            // Mostrar estado vacío si hay error
+            updateRecentActivityUI([]);
         });
 }
 
-// Registrar actividad
+// Registrar actividad - CORREGIDO: Mejor manejo de errores
 function registrarActividad(tipo, descripcion, detalles = null) {
-    if (!currentUser) return;
+    if (!currentUser || !userData) return;
     
     const actividadData = {
         userId: currentUser.uid,
@@ -417,6 +496,10 @@ function registrarActividad(tipo, descripcion, detalles = null) {
     };
     
     database.ref('actividades').push(actividadData)
+        .then(() => {
+            // Recargar actividades después de registrar una nueva
+            loadRecentActivity(currentUser.uid);
+        })
         .catch((error) => {
             console.error('Error al registrar actividad:', error);
         });
@@ -448,8 +531,8 @@ function calcularSaldoPendiente(cobranza) {
 
 // CORRECCIÓN 3: Actualizar UI del usuario sin duplicar badges
 function updateUserUI() {
-    userName.textContent = userData.nombre;
-    userAvatar.textContent = userData.nombre.charAt(0).toUpperCase();
+    if (userName) userName.textContent = userData.nombre;
+    if (userAvatar) userAvatar.textContent = userData.nombre.charAt(0).toUpperCase();
     
     // Limpiar badge anterior antes de crear uno nuevo
     const existingBadge = userInfo.querySelector('.plan-badge');
@@ -458,13 +541,17 @@ function updateUserUI() {
     }
     
     // Crear y mostrar el badge del plan
-    userPlanBadge.textContent = userData.plan === 'free' ? 'Free' : 'Pro';
-    userPlanBadge.className = `plan-badge plan-${userData.plan}`;
-    userPlanBadge.style.display = 'inline-block';
+    if (userPlanBadge) {
+        userPlanBadge.textContent = userData.plan === 'free' ? 'Free' : 'Pro';
+        userPlanBadge.className = `plan-badge plan-${userData.plan}`;
+        userPlanBadge.style.display = 'inline-block';
+    }
 }
 
 // Actualizar UI de cobranzas
 function updateCobranzasUI() {
+    if (!cobranzasTableBody) return;
+    
     cobranzasTableBody.innerHTML = '';
     
     if (cobranzas.length === 0) {
@@ -480,9 +567,12 @@ function updateCobranzasUI() {
             </tr>
         `;
         
-        document.getElementById('addFirstCobranza').addEventListener('click', function() {
-            openCobranzaModal();
-        });
+        const addFirstBtn = document.getElementById('addFirstCobranza');
+        if (addFirstBtn) {
+            addFirstBtn.addEventListener('click', function() {
+                openCobranzaModal();
+            });
+        }
         
         return;
     }
@@ -732,13 +822,14 @@ function updateDashboardStats() {
 
 // Actualizar gráfico de estados
 function updateStatusChart(pending, paid, overdue) {
-    const ctx = document.getElementById('statusChart').getContext('2d');
+    const ctx = document.getElementById('statusChart');
+    if (!ctx) return;
     
     if (statusChart) {
         statusChart.destroy();
     }
     
-    statusChart = new Chart(ctx, {
+    statusChart = new Chart(ctx.getContext('2d'), {
         type: 'doughnut',
         data: {
             labels: ['Pendientes', 'Pagadas', 'Vencidas'],
@@ -769,9 +860,11 @@ function updateStatusChart(pending, paid, overdue) {
     });
 }
 
-// Actualizar UI de actividad reciente
+// CORRECCIÓN: Mejorar actualización de actividad reciente
 function updateRecentActivityUI(activities) {
     const activityList = document.getElementById('recentActivity');
+    if (!activityList) return;
+    
     activityList.innerHTML = '';
     
     if (activities.length === 0) {
@@ -781,8 +874,8 @@ function updateRecentActivityUI(activities) {
                     <i class="fas fa-info-circle"></i>
                 </div>
                 <div class="activity-content">
-                    <div class="activity-title">No hay actividad reciente</div>
-                    <div class="activity-time">Las actividades aparecerán aquí</div>
+                    <div class="activity-title">Sin actividad reciente</div>
+                    <div class="activity-time">Las actividades de las últimas 24 horas aparecerán aquí</div>
                 </div>
             </li>
         `;
@@ -896,9 +989,15 @@ function setupNavigation() {
 
 // Configurar modales
 function setupModals() {
-    addCobranzaBtn.addEventListener('click', openCobranzaModal);
-    addCobranzaBtn2.addEventListener('click', openCobranzaModal);
-    addMessageBtn.addEventListener('click', openMessageModal);
+    if (addCobranzaBtn) {
+        addCobranzaBtn.addEventListener('click', openCobranzaModal);
+    }
+    if (addCobranzaBtn2) {
+        addCobranzaBtn2.addEventListener('click', openCobranzaModal);
+    }
+    if (addMessageBtn) {
+        addMessageBtn.addEventListener('click', openMessageModal);
+    }
     
     closeModals.forEach(btn => {
         btn.addEventListener('click', function() {
@@ -916,272 +1015,284 @@ function setupModals() {
         if (e.target === reciboModal) reciboModal.classList.remove('active');
     });
     
-    printReciboBtn.addEventListener('click', function() {
-        const reciboContent = document.getElementById('reciboContent').innerHTML;
-        const ventana = window.open('', '_blank');
-        ventana.document.write(`
-            <html>
-                <head>
-                    <title>Recibo de Cobranza</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; padding: 20px; }
-                        .recibo-container { max-width: 600px; margin: 0 auto; }
-                    </style>
-                </head>
-                <body>
-                    <div class="recibo-container">${reciboContent}</div>
-                </body>
-            </html>
-        `);
-        ventana.document.close();
-        ventana.print();
-    });
+    if (printReciboBtn) {
+        printReciboBtn.addEventListener('click', function() {
+            const reciboContent = document.getElementById('reciboContent').innerHTML;
+            const ventana = window.open('', '_blank');
+            ventana.document.write(`
+                <html>
+                    <head>
+                        <title>Recibo de Cobranza</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; padding: 20px; }
+                            .recibo-container { max-width: 600px; margin: 0 auto; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="recibo-container">${reciboContent}</div>
+                    </body>
+                </html>
+            `);
+            ventana.document.close();
+            ventana.print();
+        });
+    }
 }
 
 // Configurar formularios
 function setupForms() {
     // Formulario de empresa
-    companyForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const companyData = {
-            userId: currentUser.uid,
-            nombre: document.getElementById('companyName').value,
-            rif: document.getElementById('companyRif').value,
-            telefono: document.getElementById('companyPhone').value,
-            email: document.getElementById('companyEmail').value,
-            contactos: document.getElementById('companyContacts').value,
-            fechaActualizacion: new Date().toISOString()
-        };
-        
-        database.ref('empresas/' + currentUser.uid).set(companyData)
-            .then(() => {
-                showNotification('Datos de empresa guardados correctamente', 'success');
-                loadCompanyData(currentUser.uid);
-                registrarActividad('sistema', 'Datos de empresa actualizados', `Empresa: ${companyData.nombre}`);
-            })
-            .catch((error) => {
-                showNotification('Error al guardar datos: ' + error.message, 'danger');
-            });
-    });
+    if (companyForm) {
+        companyForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const companyData = {
+                userId: currentUser.uid,
+                nombre: document.getElementById('companyName').value,
+                rif: document.getElementById('companyRif').value,
+                telefono: document.getElementById('companyPhone').value,
+                email: document.getElementById('companyEmail').value,
+                contactos: document.getElementById('companyContacts').value,
+                fechaActualizacion: new Date().toISOString()
+            };
+            
+            database.ref('empresas/' + currentUser.uid).set(companyData)
+                .then(() => {
+                    showNotification('Datos de empresa guardados correctamente', 'success');
+                    loadCompanyData(currentUser.uid);
+                    registrarActividad('sistema', 'Datos de empresa actualizados', `Empresa: ${companyData.nombre}`);
+                })
+                .catch((error) => {
+                    showNotification('Error al guardar datos: ' + error.message, 'danger');
+                });
+        });
+    }
     
     // Formulario de cobranza - CORREGIDO: Evitar duplicación
     let isSubmitting = false;
     
-    cobranzaForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        if (isSubmitting) {
-            showNotification('Ya se está procesando la cobranza...', 'warning');
-            return;
-        }
-        
-        if (userData.plan === 'free' && cobranzas.length >= 3 && !cobranzaIdInput.value) {
-            showNotification('Has alcanzado el límite de 3 cobranzas para el plan Free. Contacta al administrador para actualizar a Pro.', 'warning');
-            return;
-        }
-        
-        // Formatear teléfono con código de Venezuela
-        let telefono = document.getElementById('clientPhone').value;
-        if (telefono && !telefono.startsWith('+58')) {
-            telefono = '+58' + telefono.replace(/-/g, '');
-        }
-        
-        const cobranzaData = {
-            userId: currentUser.uid,
-            cliente: document.getElementById('clientName').value,
-            telefono: telefono,
-            email: document.getElementById('clientEmail').value,
-            monto: parseFloat(document.getElementById('amount').value),
-            fechaEmision: document.getElementById('issueDate').value,
-            fechaVencimiento: document.getElementById('dueDate').value,
-            estado: 'pendiente',
-            notas: document.getElementById('notes').value,
-            fechaCreacion: new Date().toISOString(),
-            saldoPendiente: parseFloat(document.getElementById('amount').value)
-        };
-        
-        isSubmitting = true;
-        cobranzaSubmitBtn.disabled = true;
-        cobranzaSubmitBtn.textContent = 'Guardando...';
-        
-        if (cobranzaIdInput.value) {
-            database.ref('cobranzas/' + cobranzaIdInput.value).update(cobranzaData)
-                .then(() => {
-                    showNotification('Cobranza actualizada correctamente', 'success');
-                    cobranzaForm.reset();
-                    cobranzaModal.classList.remove('active');
-                    cobranzaIdInput.value = '';
-                    cobranzaModalTitle.textContent = 'Nueva Cobranza';
-                    cobranzaSubmitBtn.textContent = 'Guardar Cobranza';
-                    registrarActividad('cobranza', `Cobranza actualizada - ${cobranzaData.cliente}`, `Monto: $${cobranzaData.monto}`);
-                })
-                .catch((error) => {
-                    showNotification('Error al actualizar cobranza: ' + error.message, 'danger');
-                })
-                .finally(() => {
-                    isSubmitting = false;
-                    cobranzaSubmitBtn.disabled = false;
-                });
-        } else {
-            database.ref('cobranzas').push(cobranzaData)
-                .then(() => {
-                    showNotification('Cobranza agregada correctamente', 'success');
-                    cobranzaForm.reset();
-                    cobranzaModal.classList.remove('active');
-                    registrarActividad('cobranza', `Nueva cobranza creada - ${cobranzaData.cliente}`, `Monto: $${cobranzaData.monto}, Vence: ${formatDate(cobranzaData.fechaVencimiento)}`);
-                })
-                .catch((error) => {
-                    showNotification('Error al agregar cobranza: ' + error.message, 'danger');
-                })
-                .finally(() => {
-                    isSubmitting = false;
-                    cobranzaSubmitBtn.disabled = false;
-                    cobranzaSubmitBtn.textContent = 'Guardar Cobranza';
-                });
-        }
-    });
+    if (cobranzaForm) {
+        cobranzaForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (isSubmitting) {
+                showNotification('Ya se está procesando la cobranza...', 'warning');
+                return;
+            }
+            
+            if (userData.plan === 'free' && cobranzas.length >= 3 && !cobranzaIdInput.value) {
+                showNotification('Has alcanzado el límite de 3 cobranzas para el plan Free. Contacta al administrador para actualizar a Pro.', 'warning');
+                return;
+            }
+            
+            // CORRECCIÓN: Formatear teléfono manteniendo guiones para display pero guardando limpio
+            let telefono = document.getElementById('clientPhone').value;
+            // Guardar con código de país pero sin guiones para consistencia
+            let telefonoLimpio = telefono.replace(/-/g, '');
+            if (telefonoLimpio && !telefonoLimpio.startsWith('+58')) {
+                telefonoLimpio = '+58' + telefonoLimpio;
+            }
+            
+            const cobranzaData = {
+                userId: currentUser.uid,
+                cliente: document.getElementById('clientName').value,
+                telefono: telefonoLimpio,
+                email: document.getElementById('clientEmail').value,
+                monto: parseFloat(document.getElementById('amount').value),
+                fechaEmision: document.getElementById('issueDate').value,
+                fechaVencimiento: document.getElementById('dueDate').value,
+                estado: 'pendiente',
+                notas: document.getElementById('notes').value,
+                fechaCreacion: new Date().toISOString(),
+                saldoPendiente: parseFloat(document.getElementById('amount').value)
+            };
+            
+            isSubmitting = true;
+            cobranzaSubmitBtn.disabled = true;
+            cobranzaSubmitBtn.textContent = 'Guardando...';
+            
+            if (cobranzaIdInput.value) {
+                database.ref('cobranzas/' + cobranzaIdInput.value).update(cobranzaData)
+                    .then(() => {
+                        showNotification('Cobranza actualizada correctamente', 'success');
+                        cobranzaForm.reset();
+                        cobranzaModal.classList.remove('active');
+                        cobranzaIdInput.value = '';
+                        cobranzaModalTitle.textContent = 'Nueva Cobranza';
+                        cobranzaSubmitBtn.textContent = 'Guardar Cobranza';
+                        registrarActividad('cobranza', `Cobranza actualizada - ${cobranzaData.cliente}`, `Monto: $${cobranzaData.monto}`);
+                    })
+                    .catch((error) => {
+                        showNotification('Error al actualizar cobranza: ' + error.message, 'danger');
+                    })
+                    .finally(() => {
+                        isSubmitting = false;
+                        cobranzaSubmitBtn.disabled = false;
+                    });
+            } else {
+                database.ref('cobranzas').push(cobranzaData)
+                    .then(() => {
+                        showNotification('Cobranza agregada correctamente', 'success');
+                        cobranzaForm.reset();
+                        cobranzaModal.classList.remove('active');
+                        registrarActividad('cobranza', `Nueva cobranza creada - ${cobranzaData.cliente}`, `Monto: $${cobranzaData.monto}, Vence: ${formatDate(cobranzaData.fechaVencimiento)}`);
+                    })
+                    .catch((error) => {
+                        showNotification('Error al agregar cobranza: ' + error.message, 'danger');
+                    })
+                    .finally(() => {
+                        isSubmitting = false;
+                        cobranzaSubmitBtn.disabled = false;
+                        cobranzaSubmitBtn.textContent = 'Guardar Cobranza';
+                    });
+            }
+        });
+    }
     
     // Formulario de abono
-    abonoForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const cobranzaId = document.getElementById('abonoCobranzaId').value;
-        const cobranza = cobranzas.find(c => c.id === cobranzaId);
-        
-        if (!cobranza) {
-            showNotification('Cobranza no encontrada', 'danger');
-            return;
-        }
-        
-        const abonoData = {
-            cobranzaId: cobranzaId,
-            userId: currentUser.uid,
-            monto: parseFloat(document.getElementById('abonoMonto').value),
-            fecha: document.getElementById('abonoFecha').value,
-            notas: document.getElementById('abonoNotas').value,
-            fechaRegistro: new Date().toISOString()
-        };
-        
-        database.ref('abonos').push(abonoData)
-            .then(() => {
-                // Actualizar saldo pendiente en la cobranza
-                const nuevoSaldo = calcularSaldoPendiente(cobranza) - abonoData.monto;
-                database.ref('cobranzas/' + cobranzaId).update({
-                    saldoPendiente: nuevoSaldo
-                })
+    if (abonoForm) {
+        abonoForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const cobranzaId = document.getElementById('abonoCobranzaId').value;
+            const cobranza = cobranzas.find(c => c.id === cobranzaId);
+            
+            if (!cobranza) {
+                showNotification('Cobranza no encontrada', 'danger');
+                return;
+            }
+            
+            const abonoData = {
+                cobranzaId: cobranzaId,
+                userId: currentUser.uid,
+                monto: parseFloat(document.getElementById('abonoMonto').value),
+                fecha: document.getElementById('abonoFecha').value,
+                notas: document.getElementById('abonoNotas').value,
+                fechaRegistro: new Date().toISOString()
+            };
+            
+            database.ref('abonos').push(abonoData)
                 .then(() => {
-                    showNotification('Abono registrado correctamente', 'success');
-                    abonoForm.reset();
-                    abonoModal.classList.remove('active');
-                    
-                    // Registrar actividad
-                    registrarActividad('abono', `Abono registrado - ${cobranza.cliente}`, `Monto: $${abonoData.monto}, Nuevo saldo: $${nuevoSaldo.toFixed(2)}`);
-                    
-                    // Si el saldo llega a cero, marcar como pagado
-                    if (nuevoSaldo <= 0) {
-                        database.ref('cobranzas/' + cobranzaId).update({
-                            estado: 'pagado'
-                        }).then(() => {
-                            registrarActividad('pago', `Cobranza pagada completamente - ${cobranza.cliente}`);
-                        });
-                    }
+                    // Actualizar saldo pendiente en la cobranza
+                    const nuevoSaldo = calcularSaldoPendiente(cobranza) - abonoData.monto;
+                    database.ref('cobranzas/' + cobranzaId).update({
+                        saldoPendiente: nuevoSaldo
+                    })
+                    .then(() => {
+                        showNotification('Abono registrado correctamente', 'success');
+                        abonoForm.reset();
+                        abonoModal.classList.remove('active');
+                        
+                        // Registrar actividad
+                        registrarActividad('abono', `Abono registrado - ${cobranza.cliente}`, `Monto: $${abonoData.monto}, Nuevo saldo: $${nuevoSaldo.toFixed(2)}`);
+                        
+                        // Si el saldo llega a cero, marcar como pagado
+                        if (nuevoSaldo <= 0) {
+                            database.ref('cobranzas/' + cobranzaId).update({
+                                estado: 'pagado'
+                            }).then(() => {
+                                registrarActividad('pago', `Cobranza pagada completamente - ${cobranza.cliente}`);
+                            });
+                        }
+                    });
+                })
+                .catch((error) => {
+                    showNotification('Error al registrar abono: ' + error.message, 'danger');
                 });
-            })
-            .catch((error) => {
-                showNotification('Error al registrar abono: ' + error.message, 'danger');
-            });
-    });
+        });
+    }
     
     // Formulario de mensaje
-    messageForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const clientId = document.getElementById('messageClient').value;
-        const client = cobranzas.find(c => c.id === clientId);
-        
-        if (!client) {
-            showNotification('Cliente no encontrado', 'danger');
-            return;
-        }
-        
-        const messageType = document.getElementById('messageType').value;
-        const messageContent = document.getElementById('messageContent').value;
-        const channel = document.getElementById('messageChannel').value;
-        
-        const messageData = {
-            userId: currentUser.uid,
-            tipo: messageType,
-            contenido: messageContent,
-            cliente: client.cliente,
-            clienteId: clientId,
-            canal: channel,
-            fechaEnvio: new Date().toISOString(),
-            estado: 'pendiente'
-        };
-        
-        // Enviar mensaje por WhatsApp si está seleccionado
-        if (channel === 'whatsapp') {
-            if (enviarWhatsApp(client, messageContent)) {
-                messageData.estado = 'enviado';
-                showNotification('Mensaje enviado por WhatsApp', 'success');
-                registrarActividad('mensaje', `Mensaje WhatsApp enviado - ${client.cliente}`, `Tipo: ${messageType}`);
-            }
-        } else if (channel === 'email') {
-            // Copiar mensaje al portapapeles para email
-            copyToClipboard(messageContent);
-            showNotification('Mensaje copiado al portapapeles. Péguelo en su cliente de email.', 'success');
-            registrarActividad('mensaje', `Mensaje Email preparado - ${client.cliente}`, `Tipo: ${messageType} - Mensaje copiado al portapapeles`);
-        }
-        
-        database.ref('mensajes').push(messageData)
-            .then(() => {
-                messageForm.reset();
-                messageModal.classList.remove('active');
-            })
-            .catch((error) => {
-                showNotification('Error al guardar mensaje: ' + error.message, 'danger');
-            });
-    });
-    
-    // Cambiar contenido del mensaje según el tipo seleccionado
-    document.getElementById('messageType').addEventListener('change', function() {
-        const type = this.value;
-        let content = '';
-        
-        if (type === 'recordatorio_amable') {
-            content = 'Hola {cliente}, desde {empresa} te recordamos que tu pago de {monto} vence el {vencimiento}. Contáctanos: {telefono}.';
-        } else if (type === 'recordatorio_cercano') {
-            content = 'Hola {cliente}, tu pago de {monto} con {empresa} vence hoy ({vencimiento}). Agradecemos tu pronta atención.';
-        } else if (type === 'vencido_leve') {
-            content = 'Hola {cliente}, tu pago de {monto} con {empresa} está vencido desde {vencimiento}. Por favor realiza tu pago cuanto antes.';
-        } else if (type === 'ultima_advertencia') {
-            content = 'Estimado {cliente}, tu pago de {monto} con {empresa} está vencido desde {vencimiento}. Esta es la última notificación antes de tomar medidas. Contáctanos: {telefono}.';
-        }
-        
-        if (content && document.getElementById('messageClient').value) {
+    if (messageForm) {
+        messageForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
             const clientId = document.getElementById('messageClient').value;
             const client = cobranzas.find(c => c.id === clientId);
             
-            if (client && companyData) {
-                content = content
-                    .replace('{cliente}', client.cliente)
-                    .replace('{empresa}', companyData.nombre)
-                    .replace('{monto}', `$${client.monto}`)
-                    .replace('{vencimiento}', formatDate(client.fechaVencimiento))
-                    .replace('{telefono}', companyData.telefono);
+            if (!client) {
+                showNotification('Cliente no encontrado', 'danger');
+                return;
             }
-        }
+            
+            const messageType = document.getElementById('messageType').value;
+            const messageContent = document.getElementById('messageContent').value;
+            const channel = document.getElementById('messageChannel').value;
+            
+            const messageData = {
+                userId: currentUser.uid,
+                tipo: messageType,
+                contenido: messageContent,
+                cliente: client.cliente,
+                clienteId: clientId,
+                canal: channel,
+                fechaEnvio: new Date().toISOString(),
+                estado: 'pendiente'
+            };
+            
+            // Enviar mensaje por WhatsApp si está seleccionado
+            if (channel === 'whatsapp') {
+                if (enviarWhatsApp(client, messageContent)) {
+                    messageData.estado = 'enviado';
+                    showNotification('Mensaje enviado por WhatsApp', 'success');
+                    registrarActividad('mensaje', `Mensaje WhatsApp enviado - ${client.cliente}`, `Tipo: ${messageType}`);
+                }
+            } else if (channel === 'email') {
+                // Copiar mensaje al portapapeles para email
+                copyToClipboard(messageContent);
+                showNotification('Mensaje copiado al portapapeles. Péguelo en su cliente de email.', 'success');
+                registrarActividad('mensaje', `Mensaje Email preparado - ${client.cliente}`, `Tipo: ${messageType} - Mensaje copiado al portapapeles`);
+            }
+            
+            database.ref('mensajes').push(messageData)
+                .then(() => {
+                    messageForm.reset();
+                    messageModal.classList.remove('active');
+                })
+                .catch((error) => {
+                    showNotification('Error al guardar mensaje: ' + error.message, 'danger');
+                });
+        });
         
-        document.getElementById('messageContent').value = content;
-    });
-    
-    document.getElementById('messageClient').addEventListener('change', function() {
-        const type = document.getElementById('messageType').value;
-        if (type && type !== 'personalizado') {
-            document.getElementById('messageType').dispatchEvent(new Event('change'));
-        }
-    });
+        // Cambiar contenido del mensaje según el tipo seleccionado
+        document.getElementById('messageType').addEventListener('change', function() {
+            const type = this.value;
+            let content = '';
+            
+            if (type === 'recordatorio_amable') {
+                content = 'Hola {cliente}, desde {empresa} te recordamos que tu pago de {monto} vence el {vencimiento}. Contáctanos: {telefono}.';
+            } else if (type === 'recordatorio_cercano') {
+                content = 'Hola {cliente}, tu pago de {monto} con {empresa} vence hoy ({vencimiento}). Agradecemos tu pronta atención.';
+            } else if (type === 'vencido_leve') {
+                content = 'Hola {cliente}, tu pago de {monto} con {empresa} está vencido desde {vencimiento}. Por favor realiza tu pago cuanto antes.';
+            } else if (type === 'ultima_advertencia') {
+                content = 'Estimado {cliente}, tu pago de {monto} con {empresa} está vencido desde {vencimiento}. Esta es la última notificación antes de tomar medidas. Contáctanos: {telefono}.';
+            }
+            
+            if (content && document.getElementById('messageClient').value) {
+                const clientId = document.getElementById('messageClient').value;
+                const client = cobranzas.find(c => c.id === clientId);
+                
+                if (client && companyData) {
+                    content = content
+                        .replace('{cliente}', client.cliente)
+                        .replace('{empresa}', companyData.nombre)
+                        .replace('{monto}', `$${client.monto}`)
+                        .replace('{vencimiento}', formatDate(client.fechaVencimiento))
+                        .replace('{telefono}', companyData.telefono);
+                }
+            }
+            
+            document.getElementById('messageContent').value = content;
+        });
+        
+        document.getElementById('messageClient').addEventListener('change', function() {
+            const type = document.getElementById('messageType').value;
+            if (type && type !== 'personalizado') {
+                document.getElementById('messageType').dispatchEvent(new Event('change'));
+            }
+        });
+    }
 }
 
 // Configurar tabs
@@ -1220,12 +1331,14 @@ function editCobranza(cobranzaId) {
     
     document.getElementById('clientName').value = cobranza.cliente;
     
-    // Mostrar teléfono sin código de país para edición
+    // CORRECCIÓN: Mostrar teléfono formateado con guiones para edición
     let telefono = cobranza.telefono || '';
     if (telefono.startsWith('+58')) {
-        telefono = telefono.substring(3);
-        // Formatear como 412-1234567
+        telefono = telefono.substring(3); // Remover +58
+        // Formatear como 412-1234567 o 412-123-4567
         if (telefono.length === 10) {
+            telefono = telefono.substring(0, 3) + '-' + telefono.substring(3);
+        } else if (telefono.length > 3) {
             telefono = telefono.substring(0, 3) + '-' + telefono.substring(3);
         }
     }
@@ -1492,6 +1605,8 @@ function loadAdminData() {
 
 // Actualizar UI del panel de administración
 function updateAdminUI(users) {
+    if (!usersTableBody) return;
+    
     usersTableBody.innerHTML = '';
     
     if (users.length === 0) {
@@ -1584,27 +1699,29 @@ function updateAdminUI(users) {
 }
 
 // Exportar a Excel
-exportExcelBtn.addEventListener('click', function() {
-    const data = cobranzas.map(cobranza => {
-        const saldoPendiente = cobranza.saldoPendiente || calcularSaldoPendiente(cobranza);
-        return {
-            'Cliente': cobranza.cliente,
-            'Teléfono': cobranza.telefono || '',
-            'Monto Total': cobranza.monto,
-            'Saldo Pendiente': saldoPendiente,
-            'Abonos': cobranza.abonos ? cobranza.abonos.length : 0,
-            'Estado': cobranza.estado,
-            'Fecha Emisión': formatDate(cobranza.fechaEmision),
-            'Fecha Vencimiento': formatDate(cobranza.fechaVencimiento),
-            'Notas': cobranza.notas || ''
-        };
+if (exportExcelBtn) {
+    exportExcelBtn.addEventListener('click', function() {
+        const data = cobranzas.map(cobranza => {
+            const saldoPendiente = cobranza.saldoPendiente || calcularSaldoPendiente(cobranza);
+            return {
+                'Cliente': cobranza.cliente,
+                'Teléfono': cobranza.telefono || '',
+                'Monto Total': cobranza.monto,
+                'Saldo Pendiente': saldoPendiente,
+                'Abonos': cobranza.abonos ? cobranza.abonos.length : 0,
+                'Estado': cobranza.estado,
+                'Fecha Emisión': formatDate(cobranza.fechaEmision),
+                'Fecha Vencimiento': formatDate(cobranza.fechaVencimiento),
+                'Notas': cobranza.notas || ''
+            };
+        });
+        
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, 'Cobranzas');
+        XLSX.writeFile(wb, 'cobranzas.xlsx');
     });
-    
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(data);
-    XLSX.utils.book_append_sheet(wb, ws, 'Cobranzas');
-    XLSX.writeFile(wb, 'cobranzas.xlsx');
-});
+}
 
 // Formatear fecha
 function formatDate(dateString) {
@@ -1635,19 +1752,25 @@ function formatRelativeTime(dateString) {
 }
 
 // Actualizar datos de admin
-refreshUsersBtn.addEventListener('click', loadAdminData);
+if (refreshUsersBtn) {
+    refreshUsersBtn.addEventListener('click', loadAdminData);
+}
 
 // Enlace para actualizar plan - CORREGIDO: Mensaje con información de contacto
-upgradePlanLink.addEventListener('click', function(e) {
-    e.preventDefault();
-    const mensaje = `Hola, estoy interesado en actualizar a Plan Pro. Mi usuario es: ${userData.email}\n\nContacto del administrador:\nEmail: ${ADMIN_EMAIL}\nTeléfono: ${ADMIN_PHONE}`;
-    copyToClipboard(mensaje);
-    showNotification('Información de contacto copiada al portapapeles', 'info');
-});
+if (upgradePlanLink) {
+    upgradePlanLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        const mensaje = `Hola, estoy interesado en actualizar a Plan Pro. Mi usuario es: ${userData.email}\n\nContacto del administrador:\nEmail: ${ADMIN_EMAIL}\nTeléfono: ${ADMIN_PHONE}`;
+        copyToClipboard(mensaje);
+        showNotification('Información de contacto copiada al portapapeles', 'info');
+    });
+}
 
 // Enviar recibo por email
-sendReciboBtn.addEventListener('click', function() {
-    const reciboText = document.getElementById('reciboContent').innerText;
-    copyToClipboard(reciboText);
-    showNotification('Recibo copiado al portapapeles. Péguelo en su cliente de email.', 'success');
-});
+if (sendReciboBtn) {
+    sendReciboBtn.addEventListener('click', function() {
+        const reciboText = document.getElementById('reciboContent').innerText;
+        copyToClipboard(reciboText);
+        showNotification('Recibo copiado al portapapeles. Péguelo en su cliente de email.', 'success');
+    });
+}
