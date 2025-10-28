@@ -766,6 +766,7 @@
                     <div class="user-info" id="userInfo" style="display: none;">
                         <div class="user-avatar" id="userAvatar">U</div>
                         <span id="userName">Usuario</span>
+                        <span id="userPlanBadge" class="plan-badge plan-free" style="display: none;">Free</span>
                     </div>
                     <button class="btn btn-outline" id="loginBtn">Iniciar Sesión</button>
                     <button class="btn btn-primary" id="registerBtn">Registrarse</button>
@@ -1215,6 +1216,7 @@
         const userInfo = document.getElementById('userInfo');
         const userAvatar = document.getElementById('userAvatar');
         const userName = document.getElementById('userName');
+        const userPlanBadge = document.getElementById('userPlanBadge');
         const loginBtn = document.getElementById('loginBtn');
         const registerBtn = document.getElementById('registerBtn');
         const logoutBtn = document.getElementById('logoutBtn');
@@ -1251,6 +1253,9 @@
         const connectionStatus = document.getElementById('connectionStatus');
         const adminConnectionAlert = document.getElementById('adminConnectionAlert');
 
+        // CORRECCIÓN 1: Solo tu correo como administrador
+        const ADMIN_EMAIL = 'luishparedes94@gmail.com';
+
         // Inicialización de la aplicación
         document.addEventListener('DOMContentLoaded', function() {
             // Configurar monitoreo de conexión
@@ -1274,7 +1279,6 @@
 
         // Configurar monitoreo de conexión
         function setupConnectionMonitoring() {
-            // Monitorear estado de conexión de Firebase
             const databaseRef = database.ref('.info/connected');
             databaseRef.on('value', (snapshot) => {
                 const connected = snapshot.val();
@@ -1284,7 +1288,6 @@
                     connectionStatus.style.display = 'block';
                     adminConnectionAlert.style.display = 'none';
                     
-                    // Ocultar después de 3 segundos
                     setTimeout(() => {
                         connectionStatus.style.display = 'none';
                     }, 3000);
@@ -1401,7 +1404,8 @@
                         loadCompanyData(userId);
                         loadCobranzas(userId);
                         
-                        if (userData.email === 'admin@ppbcobranza.com') {
+                        // CORRECCIÓN 2: Solo tu correo tiene acceso administrativo
+                        if (userData.email === ADMIN_EMAIL) {
                             document.querySelectorAll('.admin-only').forEach(el => {
                                 el.style.display = 'block';
                             });
@@ -1488,16 +1492,21 @@
             return parseFloat(cobranza.monto) - totalAbonado;
         }
 
-        // Actualizar UI con datos del usuario
+        // CORRECCIÓN 3: Actualizar UI del usuario sin duplicar badges
         function updateUserUI() {
             userName.textContent = userData.nombre;
             userAvatar.textContent = userData.nombre.charAt(0).toUpperCase();
             
-            const planBadge = document.createElement('span');
-            planBadge.className = `plan-badge plan-${userData.plan}`;
-            planBadge.textContent = userData.plan === 'free' ? 'Free' : 'Pro';
+            // Limpiar badge anterior antes de crear uno nuevo
+            const existingBadge = userInfo.querySelector('.plan-badge');
+            if (existingBadge) {
+                existingBadge.remove();
+            }
             
-            userInfo.appendChild(planBadge);
+            // Crear y mostrar el badge del plan
+            userPlanBadge.textContent = userData.plan === 'free' ? 'Free' : 'Pro';
+            userPlanBadge.className = `plan-badge plan-${userData.plan}`;
+            userPlanBadge.style.display = 'inline-block';
         }
 
         // Actualizar UI de cobranzas
@@ -1652,7 +1661,6 @@
             document.getElementById('abonoFecha').valueAsDate = new Date();
             document.getElementById('abonoNotas').value = '';
             
-            // Actualizar saldo después en tiempo real
             document.getElementById('abonoMonto').addEventListener('input', function() {
                 const montoAbono = parseFloat(this.value) || 0;
                 const nuevoSaldo = saldoPendiente - montoAbono;
@@ -2276,16 +2284,10 @@
                 return;
             }
             
-            // Limpiar número de teléfono (remover caracteres no numéricos)
             const telefonoLimpio = telefono.replace(/\D/g, '');
-            
-            // Codificar mensaje para URL
             const mensajeCodificado = encodeURIComponent(mensaje);
-            
-            // Crear enlace de WhatsApp
             const whatsappURL = `https://wa.me/${telefonoLimpio}?text=${mensajeCodificado}`;
             
-            // Abrir en nueva pestaña
             window.open(whatsappURL, '_blank');
         }
 
@@ -2607,7 +2609,7 @@
         // Enlace para actualizar plan
         upgradePlanLink.addEventListener('click', function(e) {
             e.preventDefault();
-            alert('Para actualizar a Plan Pro, contacta al administrador: admin@ppbcobranza.com');
+            alert('Para actualizar a Plan Pro, contacta al administrador: luishparedes94@gmail.com');
         });
 
         // Enviar recibo por email
