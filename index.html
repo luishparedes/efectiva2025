@@ -739,11 +739,67 @@
             background-color: var(--danger);
             color: white;
         }
+
+        /* Phone input styles */
+        .phone-input-container {
+            position: relative;
+        }
+
+        .country-code {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .phone-input {
+            padding-left: 50px !important;
+        }
+
+        /* Copy notification */
+        .copy-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: var(--success);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 1002;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .copy-notification.show {
+            display: flex;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
     <!-- Connection Status Indicator -->
     <div id="connectionStatus" class="connection-status"></div>
+
+    <!-- Copy Notification -->
+    <div id="copyNotification" class="copy-notification">
+        <i class="fas fa-check-circle"></i>
+        <span>Texto copiado al portapapeles</span>
+    </div>
 
     <!-- Header -->
     <header>
@@ -753,7 +809,7 @@
                     <i class="fas fa-file-invoice-dollar"></i>
                     <span>PPB Cobranza</span>
                 </div>
-                <nav>
+                <nav id="mainNav">
                     <ul>
                         <li><a href="#" class="nav-link active" data-target="dashboard">Dashboard</a></li>
                         <li><a href="#" class="nav-link" data-target="cobranzas">Cobranzas</a></li>
@@ -1057,7 +1113,11 @@
                 </div>
                 <div class="form-group">
                     <label for="clientPhone">Teléfono del Cliente</label>
-                    <input type="tel" id="clientPhone" class="form-control">
+                    <div class="phone-input-container">
+                        <span class="country-code">+58</span>
+                        <input type="tel" id="clientPhone" class="form-control phone-input" placeholder="412-1234567" pattern="[0-9]{3}-[0-9]{7}" required>
+                    </div>
+                    <small style="color: var(--gray);">Formato: 412-1234567 (sin +58)</small>
                 </div>
                 <div class="form-group">
                     <label for="clientEmail">Email del Cliente</label>
@@ -1252,9 +1312,12 @@
         const sendReciboBtn = document.getElementById('sendReciboBtn');
         const connectionStatus = document.getElementById('connectionStatus');
         const adminConnectionAlert = document.getElementById('adminConnectionAlert');
+        const copyNotification = document.getElementById('copyNotification');
+        const mainNav = document.getElementById('mainNav');
 
         // CORRECCIÓN 1: Solo tu correo como administrador
         const ADMIN_EMAIL = 'luishparedes94@gmail.com';
+        const ADMIN_PHONE = '+58412-527-8450';
 
         // Inicialización de la aplicación
         document.addEventListener('DOMContentLoaded', function() {
@@ -1263,6 +1326,9 @@
             
             // Configurar listeners de autenticación
             setupAuthListeners();
+            
+            // Configurar navegación para usuarios no autenticados
+            setupNavigationForUnauthenticated();
             
             // Verificar estado de autenticación
             auth.onAuthStateChanged((user) => {
@@ -1300,6 +1366,63 @@
             });
         }
 
+        // Configurar navegación para usuarios no autenticados
+        function setupNavigationForUnauthenticated() {
+            const navLinks = mainNav.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    if (!currentUser) {
+                        e.preventDefault();
+                        showNotification('Debes iniciar sesión para acceder a esta sección', 'warning');
+                        authContainer.style.display = 'flex';
+                        loginCard.style.display = 'block';
+                        registerCard.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // Mostrar notificación
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `alert alert-${type}`;
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            `;
+            
+            document.querySelector('.container').insertBefore(notification, document.querySelector('.container').firstChild);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+        }
+
+        // Mostrar notificación de copiado
+        function showCopyNotification() {
+            copyNotification.classList.add('show');
+            setTimeout(() => {
+                copyNotification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Copiar texto al portapapeles
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showCopyNotification();
+            }).catch(err => {
+                console.error('Error al copiar: ', err);
+                // Fallback para navegadores antiguos
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showCopyNotification();
+            });
+        }
+
         // Configurar listeners de autenticación
         function setupAuthListeners() {
             // Switch entre login y registro
@@ -1325,9 +1448,10 @@
                     .then((userCredential) => {
                         console.log('Usuario autenticado:', userCredential.user);
                         loginForm.reset();
+                        showNotification('Sesión iniciada correctamente', 'success');
                     })
                     .catch((error) => {
-                        alert('Error al iniciar sesión: ' + error.message);
+                        showNotification('Error al iniciar sesión: ' + error.message, 'danger');
                     });
             });
 
@@ -1354,9 +1478,10 @@
                         console.log('Usuario registrado exitosamente');
                         registerForm.reset();
                         switchToLogin.click();
+                        showNotification('Cuenta creada exitosamente', 'success');
                     })
                     .catch((error) => {
-                        alert('Error al registrar usuario: ' + error.message);
+                        showNotification('Error al registrar usuario: ' + error.message, 'danger');
                     });
             });
 
@@ -1368,6 +1493,8 @@
                 mensajesSection.style.display = 'none';
                 empresaSection.style.display = 'none';
                 adminSection.style.display = 'none';
+                loginCard.style.display = 'block';
+                registerCard.style.display = 'none';
             });
 
             registerBtn.addEventListener('click', function() {
@@ -1385,6 +1512,7 @@
                 auth.signOut()
                     .then(() => {
                         console.log('Sesión cerrada');
+                        showNotification('Sesión cerrada correctamente', 'success');
                     })
                     .catch((error) => {
                         console.error('Error al cerrar sesión:', error);
@@ -1403,6 +1531,7 @@
                         updateUserUI();
                         loadCompanyData(userId);
                         loadCobranzas(userId);
+                        loadRecentActivity(userId);
                         
                         // CORRECCIÓN 2: Solo tu correo tiene acceso administrativo
                         if (userData.email === ADMIN_EMAIL) {
@@ -1466,6 +1595,53 @@
                     freeLimitAlert.style.display = 'none';
                 }
             });
+        }
+
+        // Cargar actividad reciente
+        function loadRecentActivity(userId) {
+            // Limpiar actividades antiguas (más de 24 horas)
+            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            
+            database.ref('actividades')
+                .orderByChild('userId')
+                .equalTo(userId)
+                .on('value', (snapshot) => {
+                    const activities = [];
+                    snapshot.forEach((childSnapshot) => {
+                        const activity = childSnapshot.val();
+                        activity.id = childSnapshot.key;
+                        
+                        // Solo mostrar actividades de las últimas 24 horas
+                        if (new Date(activity.fecha) > twentyFourHoursAgo) {
+                            activities.push(activity);
+                        } else {
+                            // Eliminar actividad antigua
+                            database.ref('actividades/' + childSnapshot.key).remove();
+                        }
+                    });
+                    
+                    activities.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+                    updateRecentActivityUI(activities);
+                });
+        }
+
+        // Registrar actividad
+        function registrarActividad(tipo, descripcion, detalles = null) {
+            if (!currentUser) return;
+            
+            const actividadData = {
+                userId: currentUser.uid,
+                tipo: tipo,
+                descripcion: descripcion,
+                detalles: detalles,
+                fecha: new Date().toISOString(),
+                usuario: userData.nombre
+            };
+            
+            database.ref('actividades').push(actividadData)
+                .catch((error) => {
+                    console.error('Error al registrar actividad:', error);
+                });
         }
 
         // Cargar abonos para una cobranza
@@ -1774,7 +1950,6 @@
             document.getElementById('totalAmount').textContent = `$${totalAmount.toFixed(2)}`;
             
             updateStatusChart(pending, paid, overdue);
-            updateRecentActivity();
         }
 
         // Actualizar gráfico de estados
@@ -1816,38 +1991,12 @@
             });
         }
 
-        // Actualizar actividad reciente
-        function updateRecentActivity() {
+        // Actualizar UI de actividad reciente
+        function updateRecentActivityUI(activities) {
             const activityList = document.getElementById('recentActivity');
             activityList.innerHTML = '';
             
-            const recentActivities = [];
-            
-            cobranzas.forEach(cobranza => {
-                recentActivities.push({
-                    type: 'cobranza',
-                    title: `Nueva cobranza para ${cobranza.cliente}`,
-                    time: cobranza.fechaCreacion,
-                    icon: 'fas fa-plus'
-                });
-                
-                if (cobranza.abonos) {
-                    cobranza.abonos.forEach(abono => {
-                        recentActivities.push({
-                            type: 'abono',
-                            title: `Abono de $${abono.monto} - ${cobranza.cliente}`,
-                            time: abono.fecha,
-                            icon: 'fas fa-hand-holding-usd'
-                        });
-                    });
-                }
-            });
-            
-            recentActivities.sort((a, b) => new Date(b.time) - new Date(a.time));
-            
-            const recentItems = recentActivities.slice(0, 5);
-            
-            if (recentItems.length === 0) {
+            if (activities.length === 0) {
                 activityList.innerHTML = `
                     <li class="activity-item">
                         <div class="activity-icon">
@@ -1855,24 +2004,50 @@
                         </div>
                         <div class="activity-content">
                             <div class="activity-title">No hay actividad reciente</div>
-                            <div class="activity-time">Agrega tu primera cobranza</div>
+                            <div class="activity-time">Las actividades aparecerán aquí</div>
                         </div>
                     </li>
                 `;
                 return;
             }
             
-            recentItems.forEach(activity => {
+            activities.slice(0, 10).forEach(activity => {
                 const li = document.createElement('li');
                 li.className = 'activity-item';
                 
+                let icon = 'fas fa-info-circle';
+                let color = 'var(--primary)';
+                
+                switch(activity.tipo) {
+                    case 'cobranza':
+                        icon = 'fas fa-file-invoice-dollar';
+                        break;
+                    case 'abono':
+                        icon = 'fas fa-hand-holding-usd';
+                        color = 'var(--success)';
+                        break;
+                    case 'mensaje':
+                        icon = 'fas fa-envelope';
+                        color = 'var(--warning)';
+                        break;
+                    case 'pago':
+                        icon = 'fas fa-check-circle';
+                        color = 'var(--success)';
+                        break;
+                    case 'sistema':
+                        icon = 'fas fa-cog';
+                        color = 'var(--gray)';
+                        break;
+                }
+                
                 li.innerHTML = `
-                    <div class="activity-icon">
-                        <i class="${activity.icon}"></i>
+                    <div class="activity-icon" style="background-color: ${color}20; color: ${color};">
+                        <i class="${icon}"></i>
                     </div>
                     <div class="activity-content">
-                        <div class="activity-title">${activity.title}</div>
-                        <div class="activity-time">${formatRelativeTime(activity.time)}</div>
+                        <div class="activity-title">${activity.descripcion}</div>
+                        <div class="activity-time">${formatRelativeTime(activity.fecha)}</div>
+                        ${activity.detalles ? `<div class="activity-details" style="font-size: 0.8rem; color: var(--gray); margin-top: 5px;">${activity.detalles}</div>` : ''}
                     </div>
                 `;
                 
@@ -1909,6 +2084,11 @@
             loginBtn.style.display = 'inline-block';
             registerBtn.style.display = 'inline-block';
             logoutBtn.style.display = 'none';
+            
+            // Ocultar todas las secciones excepto auth
+            document.querySelectorAll('.dashboard, .admin-panel').forEach(section => {
+                section.style.display = 'none';
+            });
         }
 
         // Configurar navegación
@@ -1998,11 +2178,12 @@
                 
                 database.ref('empresas/' + currentUser.uid).set(companyData)
                     .then(() => {
-                        alert('Datos de empresa guardados correctamente');
+                        showNotification('Datos de empresa guardados correctamente', 'success');
                         loadCompanyData(currentUser.uid);
+                        registrarActividad('sistema', 'Datos de empresa actualizados', `Empresa: ${companyData.nombre}`);
                     })
                     .catch((error) => {
-                        alert('Error al guardar datos: ' + error.message);
+                        showNotification('Error al guardar datos: ' + error.message, 'danger');
                     });
             });
             
@@ -2011,14 +2192,20 @@
                 e.preventDefault();
                 
                 if (userData.plan === 'free' && cobranzas.length >= 3 && !cobranzaIdInput.value) {
-                    alert('Has alcanzado el límite de 3 cobranzas para el plan Free. Contacta al administrador para actualizar a Pro.');
+                    showNotification('Has alcanzado el límite de 3 cobranzas para el plan Free. Contacta al administrador para actualizar a Pro.', 'warning');
                     return;
+                }
+                
+                // Formatear teléfono con código de Venezuela
+                let telefono = document.getElementById('clientPhone').value;
+                if (telefono && !telefono.startsWith('+58')) {
+                    telefono = '+58' + telefono.replace(/-/g, '');
                 }
                 
                 const cobranzaData = {
                     userId: currentUser.uid,
                     cliente: document.getElementById('clientName').value,
-                    telefono: document.getElementById('clientPhone').value,
+                    telefono: telefono,
                     email: document.getElementById('clientEmail').value,
                     monto: parseFloat(document.getElementById('amount').value),
                     fechaEmision: document.getElementById('issueDate').value,
@@ -2032,25 +2219,27 @@
                 if (cobranzaIdInput.value) {
                     database.ref('cobranzas/' + cobranzaIdInput.value).update(cobranzaData)
                         .then(() => {
-                            alert('Cobranza actualizada correctamente');
+                            showNotification('Cobranza actualizada correctamente', 'success');
                             cobranzaForm.reset();
                             cobranzaModal.classList.remove('active');
                             cobranzaIdInput.value = '';
                             cobranzaModalTitle.textContent = 'Nueva Cobranza';
                             cobranzaSubmitBtn.textContent = 'Guardar Cobranza';
+                            registrarActividad('cobranza', `Cobranza actualizada - ${cobranzaData.cliente}`, `Monto: $${cobranzaData.monto}`);
                         })
                         .catch((error) => {
-                            alert('Error al actualizar cobranza: ' + error.message);
+                            showNotification('Error al actualizar cobranza: ' + error.message, 'danger');
                         });
                 } else {
                     database.ref('cobranzas').push(cobranzaData)
                         .then(() => {
-                            alert('Cobranza agregada correctamente');
+                            showNotification('Cobranza agregada correctamente', 'success');
                             cobranzaForm.reset();
                             cobranzaModal.classList.remove('active');
+                            registrarActividad('cobranza', `Nueva cobranza creada - ${cobranzaData.cliente}`, `Monto: $${cobranzaData.monto}, Vence: ${formatDate(cobranzaData.fechaVencimiento)}`);
                         })
                         .catch((error) => {
-                            alert('Error al agregar cobranza: ' + error.message);
+                            showNotification('Error al agregar cobranza: ' + error.message, 'danger');
                         });
                 }
             });
@@ -2063,7 +2252,7 @@
                 const cobranza = cobranzas.find(c => c.id === cobranzaId);
                 
                 if (!cobranza) {
-                    alert('Cobranza no encontrada');
+                    showNotification('Cobranza no encontrada', 'danger');
                     return;
                 }
                 
@@ -2084,20 +2273,25 @@
                             saldoPendiente: nuevoSaldo
                         })
                         .then(() => {
-                            alert('Abono registrado correctamente');
+                            showNotification('Abono registrado correctamente', 'success');
                             abonoForm.reset();
                             abonoModal.classList.remove('active');
+                            
+                            // Registrar actividad
+                            registrarActividad('abono', `Abono registrado - ${cobranza.cliente}`, `Monto: $${abonoData.monto}, Nuevo saldo: $${nuevoSaldo.toFixed(2)}`);
                             
                             // Si el saldo llega a cero, marcar como pagado
                             if (nuevoSaldo <= 0) {
                                 database.ref('cobranzas/' + cobranzaId).update({
                                     estado: 'pagado'
+                                }).then(() => {
+                                    registrarActividad('pago', `Cobranza pagada completamente - ${cobranza.cliente}`);
                                 });
                             }
                         });
                     })
                     .catch((error) => {
-                        alert('Error al registrar abono: ' + error.message);
+                        showNotification('Error al registrar abono: ' + error.message, 'danger');
                     });
             });
             
@@ -2109,34 +2303,46 @@
                 const client = cobranzas.find(c => c.id === clientId);
                 
                 if (!client) {
-                    alert('Cliente no encontrado');
+                    showNotification('Cliente no encontrado', 'danger');
                     return;
                 }
                 
+                const messageType = document.getElementById('messageType').value;
+                const messageContent = document.getElementById('messageContent').value;
+                const channel = document.getElementById('messageChannel').value;
+                
                 const messageData = {
                     userId: currentUser.uid,
-                    tipo: document.getElementById('messageType').value,
-                    contenido: document.getElementById('messageContent').value,
+                    tipo: messageType,
+                    contenido: messageContent,
                     cliente: client.cliente,
                     clienteId: clientId,
-                    canal: document.getElementById('messageChannel').value,
+                    canal: channel,
                     fechaEnvio: new Date().toISOString(),
                     estado: 'pendiente'
                 };
                 
                 // Enviar mensaje por WhatsApp si está seleccionado
-                if (messageData.canal === 'whatsapp') {
-                    enviarWhatsApp(client, messageData.contenido);
+                if (channel === 'whatsapp') {
+                    if (enviarWhatsApp(client, messageContent)) {
+                        messageData.estado = 'enviado';
+                        showNotification('Mensaje enviado por WhatsApp', 'success');
+                        registrarActividad('mensaje', `Mensaje WhatsApp enviado - ${client.cliente}`, `Tipo: ${messageType}`);
+                    }
+                } else if (channel === 'email') {
+                    // Copiar mensaje al portapapeles para email
+                    copyToClipboard(messageContent);
+                    showNotification('Mensaje copiado al portapapeles. Péguelo en su cliente de email.', 'success');
+                    registrarActividad('mensaje', `Mensaje Email preparado - ${client.cliente}`, `Tipo: ${messageType} - Mensaje copiado al portapapeles`);
                 }
                 
                 database.ref('mensajes').push(messageData)
                     .then(() => {
-                        alert('Mensaje enviado correctamente');
                         messageForm.reset();
                         messageModal.classList.remove('active');
                     })
                     .catch((error) => {
-                        alert('Error al enviar mensaje: ' + error.message);
+                        showNotification('Error al guardar mensaje: ' + error.message, 'danger');
                     });
             });
             
@@ -2214,7 +2420,18 @@
             if (!cobranza) return;
             
             document.getElementById('clientName').value = cobranza.cliente;
-            document.getElementById('clientPhone').value = cobranza.telefono || '';
+            
+            // Mostrar teléfono sin código de país para edición
+            let telefono = cobranza.telefono || '';
+            if (telefono.startsWith('+58')) {
+                telefono = telefono.substring(3);
+                // Formatear como 412-1234567
+                if (telefono.length === 10) {
+                    telefono = telefono.substring(0, 3) + '-' + telefono.substring(3);
+                }
+            }
+            document.getElementById('clientPhone').value = telefono;
+            
             document.getElementById('clientEmail').value = cobranza.email || '';
             document.getElementById('amount').value = cobranza.monto;
             document.getElementById('issueDate').value = cobranza.fechaEmision;
@@ -2238,7 +2455,7 @@
                 if (cobranza.estado !== 'pagado' && saldoPendiente > 0) {
                     const option = document.createElement('option');
                     option.value = cobranza.id;
-                    option.textContent = cobranza.cliente;
+                    option.textContent = `${cobranza.cliente} - $${cobranza.monto}`;
                     clientSelect.appendChild(option);
                 }
             });
@@ -2280,15 +2497,25 @@
         function enviarWhatsApp(cliente, mensaje) {
             const telefono = cliente.telefono;
             if (!telefono) {
-                alert('El cliente no tiene número de teléfono registrado');
-                return;
+                showNotification('El cliente no tiene número de teléfono registrado', 'warning');
+                return false;
             }
             
-            const telefonoLimpio = telefono.replace(/\D/g, '');
+            // Asegurarse de que el teléfono tenga el formato correcto
+            let telefonoLimpio = telefono.replace(/\D/g, '');
+            if (telefonoLimpio.startsWith('58')) {
+                telefonoLimpio = telefonoLimpio;
+            } else if (telefonoLimpio.startsWith('0')) {
+                telefonoLimpio = '58' + telefonoLimpio.substring(1);
+            } else {
+                telefonoLimpio = '58' + telefonoLimpio;
+            }
+            
             const mensajeCodificado = encodeURIComponent(mensaje);
             const whatsappURL = `https://wa.me/${telefonoLimpio}?text=${mensajeCodificado}`;
             
             window.open(whatsappURL, '_blank');
+            return true;
         }
 
         // Generar recibo
@@ -2402,15 +2629,17 @@
         // Marcar cobranza como pagada
         function markAsPaid(cobranzaId) {
             if (confirm('¿Estás seguro de que quieres marcar esta cobranza como pagada?')) {
+                const cobranza = cobranzas.find(c => c.id === cobranzaId);
                 database.ref('cobranzas/' + cobranzaId).update({
                     estado: 'pagado',
                     saldoPendiente: 0
                 })
                 .then(() => {
-                    alert('Cobranza marcada como pagada');
+                    showNotification('Cobranza marcada como pagada', 'success');
+                    registrarActividad('pago', `Cobranza marcada como pagada - ${cobranza.cliente}`, `Monto: $${cobranza.monto}`);
                 })
                 .catch((error) => {
-                    alert('Error al actualizar cobranza: ' + error.message);
+                    showNotification('Error al actualizar cobranza: ' + error.message, 'danger');
                 });
             }
         }
@@ -2418,6 +2647,7 @@
         // Eliminar cobranza
         function deleteCobranza(cobranzaId) {
             if (confirm('¿Estás seguro de que quieres eliminar esta cobranza?')) {
+                const cobranza = cobranzas.find(c => c.id === cobranzaId);
                 // Primero eliminar todos los abonos asociados
                 database.ref('abonos').orderByChild('cobranzaId').equalTo(cobranzaId).once('value')
                     .then((snapshot) => {
@@ -2432,10 +2662,11 @@
                         return database.ref('cobranzas/' + cobranzaId).remove();
                     })
                     .then(() => {
-                        alert('Cobranza eliminada');
+                        showNotification('Cobranza eliminada', 'success');
+                        registrarActividad('sistema', `Cobranza eliminada - ${cobranza.cliente}`, `Monto: $${cobranza.monto}`);
                     })
                     .catch((error) => {
-                        alert('Error al eliminar cobranza: ' + error.message);
+                        showNotification('Error al eliminar cobranza: ' + error.message, 'danger');
                     });
             }
         }
@@ -2523,11 +2754,11 @@
                         activo: !currentActive
                     })
                     .then(() => {
-                        alert(`Usuario ${!currentActive ? 'activado' : 'desactivado'} correctamente`);
+                        showNotification(`Usuario ${!currentActive ? 'activado' : 'desactivado'} correctamente`, 'success');
                         loadAdminData();
                     })
                     .catch((error) => {
-                        alert('Error al actualizar usuario: ' + error.message);
+                        showNotification('Error al actualizar usuario: ' + error.message, 'danger');
                     });
                 });
             });
@@ -2542,11 +2773,11 @@
                         plan: newPlan
                     })
                     .then(() => {
-                        alert(`Usuario actualizado a plan ${newPlan}`);
+                        showNotification(`Usuario actualizado a plan ${newPlan}`, 'success');
                         loadAdminData();
                     })
                     .catch((error) => {
-                        alert('Error al actualizar usuario: ' + error.message);
+                        showNotification('Error al actualizar usuario: ' + error.message, 'danger');
                     });
                 });
             });
@@ -2609,12 +2840,16 @@
         // Enlace para actualizar plan
         upgradePlanLink.addEventListener('click', function(e) {
             e.preventDefault();
-            alert('Para actualizar a Plan Pro, contacta al administrador: luishparedes94@gmail.com');
+            const mensaje = `Hola, estoy interesado en actualizar a Plan Pro. Mi usuario es: ${userData.email}. Contacto: ${ADMIN_PHONE}`;
+            copyToClipboard(mensaje);
+            showNotification('Mensaje copiado. Contacta al administrador: ' + ADMIN_PHONE, 'info');
         });
 
         // Enviar recibo por email
         sendReciboBtn.addEventListener('click', function() {
-            alert('Función de envío por email será implementada próximamente');
+            const reciboText = document.getElementById('reciboContent').innerText;
+            copyToClipboard(reciboText);
+            showNotification('Recibo copiado al portapapeles. Péguelo en su cliente de email.', 'success');
         });
     </script>
 </body>
