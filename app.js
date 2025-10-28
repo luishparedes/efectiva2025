@@ -113,26 +113,20 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// CORRECCIÓN: Configurar input de teléfono para permitir guiones
+// CORRECCIÓN: Configurar input de teléfono para permitir guiones (formato simple)
 function setupPhoneInput() {
     if (clientPhoneInput) {
         clientPhoneInput.addEventListener('input', function(e) {
-            let value = e.target.value.replace(/[^\d-]/g, '');
+            let value = e.target.value.replace(/[^\d]/g, ''); // Solo números
             
-            // Permitir formato con guiones
-            if (value.length <= 12) {
-                // Formato: 412-1234567 o 412-123-4567
-                if (value.length > 3 && !value.includes('-')) {
-                    value = value.substring(0, 3) + '-' + value.substring(3);
-                }
-                if (value.length > 7 && value.split('-').length === 2) {
-                    const parts = value.split('-');
-                    if (parts[1].length > 3) {
-                        value = parts[0] + '-' + parts[1].substring(0, 3) + '-' + parts[1].substring(3);
-                    }
-                }
-            } else {
-                value = value.substring(0, 12);
+            // Formato automático: 412-1234567 (solo un guión)
+            if (value.length > 3 && value.length <= 10) {
+                value = value.substring(0, 3) + '-' + value.substring(3);
+            }
+            
+            // Limitar a 11 caracteres máximo (3+1+7)
+            if (value.length > 11) {
+                value = value.substring(0, 11);
             }
             
             e.target.value = value;
@@ -149,6 +143,9 @@ function setupPhoneInput() {
             }
             e.preventDefault();
         });
+        
+        // Establecer placeholder de ejemplo
+        clientPhoneInput.placeholder = '412-1234567';
     }
 }
 
@@ -1368,16 +1365,15 @@ function editCobranza(cobranzaId) {
     
     document.getElementById('clientName').value = cobranza.cliente;
     
-    // CORRECCIÓN: Mostrar teléfono formateado con guiones para edición
+    // CORRECCIÓN: Mostrar teléfono formateado correctamente
     let telefono = cobranza.telefono || '';
     if (telefono.startsWith('+58')) {
         telefono = telefono.substring(3); // Remover +58
-        // Formatear como 412-1234567 o 412-123-4567
-        if (telefono.length === 10) {
-            telefono = telefono.substring(0, 3) + '-' + telefono.substring(3);
-        } else if (telefono.length > 3) {
-            telefono = telefono.substring(0, 3) + '-' + telefono.substring(3);
-        }
+    }
+    // Formatear como 412-1234567 (solo números y un guión)
+    telefono = telefono.replace(/\D/g, ''); // Solo números
+    if (telefono.length > 3) {
+        telefono = telefono.substring(0, 3) + '-' + telefono.substring(3);
     }
     document.getElementById('clientPhone').value = telefono;
     
