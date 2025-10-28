@@ -440,34 +440,38 @@ function loadCobranzas(userId) {
 
 // CORRECCIÓN: Cargar actividad reciente en tiempo real
 function loadRecentActivity(userId) {
+    console.log('🔍 Cargando actividades para usuario:', userId);
+    
     database.ref('actividades')
         .orderByChild('userId')
         .equalTo(userId)
-        .on('value', (snapshot) => { // Cambiado a on para escuchar en tiempo real
+        .on('value', (snapshot) => {
             const activities = [];
-            const deletePromises = [];
-            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+            
+            console.log('📊 Actividades encontradas en BD:', snapshot.numChildren());
             
             snapshot.forEach((childSnapshot) => {
                 const activity = childSnapshot.val();
                 activity.id = childSnapshot.key;
                 
-                // Solo mostrar actividades de las últimas 24 horas
-                if (new Date(activity.fecha) > twentyFourHoursAgo) {
+                const activityDate = new Date(activity.fecha);
+                const isRecent = activityDate >= twentyFourHoursAgo;
+                
+                console.log('📅 Actividad:', activity.descripcion, '| Fecha:', activity.fecha, '| Es reciente:', isRecent);
+                
+                // Mostrar actividades de las últimas 24 horas
+                if (isRecent) {
                     activities.push(activity);
                 } else {
-                    // Eliminar actividad antigua
-                    deletePromises.push(database.ref('actividades/' + childSnapshot.key).remove());
+                    // Eliminar actividad antigua en segundo plano
+                    database.ref('actividades/' + childSnapshot.key).remove()
+                        .then(() => console.log('🗑️ Actividad antigua eliminada:', activity.descripcion))
+                        .catch(error => console.error('❌ Error eliminando actividad:', error));
                 }
             });
             
-            // Ejecutar eliminaciones en segundo plano sin bloquear la UI
-            if (deletePromises.length > 0) {
-                Promise.all(deletePromises).catch(error => {
-                    console.error('Error eliminando actividades antiguas:', error);
-                });
-            }
-            
+            console.log('🎯 Actividades a mostrar:', activities.length);
             activities.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
             updateRecentActivityUI(activities);
         });
@@ -476,9 +480,14 @@ function loadRecentActivity(userId) {
 // CORRECCIÓN: Mejorar actualización de actividad reciente
 function updateRecentActivityUI(activities) {
     const activityList = document.getElementById('recentActivity');
-    if (!activityList) return;
+    if (!activityList) {
+        console.error('❌ No se encontró el elemento recentActivity');
+        return;
+    }
     
     activityList.innerHTML = '';
+    
+    console.log('🔄 Actualizando UI con:', activities.length, 'actividades');
     
     if (activities.length === 0) {
         activityList.innerHTML = `
@@ -488,7 +497,7 @@ function updateRecentActivityUI(activities) {
                 </div>
                 <div class="activity-content">
                     <div class="activity-title">Sin actividad reciente</div>
-                    <div class="activity-time">Las actividades aparecerán aquí automáticamente</div>
+                    <div class="activity-time">Realiza alguna acción para ver actividades aquí</div>
                 </div>
             </li>
         `;
@@ -537,6 +546,30 @@ function updateRecentActivityUI(activities) {
         
         activityList.appendChild(li);
     });
+    
+    console.log('✅ UI actualizada correctamente');
+}
+
+// Registrar actividad
+function registrarActividad(tipo, descripcion, detalles = null) {
+    if (!currentUser || !userData) return;
+    
+    const actividadData = {
+        userId: currentUser.uid,
+        tipo: tipo,
+        descripcion: descripcion,
+        detalles: detalles,
+        fecha: new Date().toISOString(),
+        usuario: userData.nombre
+    };
+    
+    database.ref('actividades').push(actividadData)
+        .then(() => {
+            console.log('✅ Actividad registrada:', descripcion);
+        })
+        .catch((error) => {
+            console.error('❌ Error al registrar actividad:', error);
+        });
 }
 
 // Cargar abonos para una cobranza
@@ -891,72 +924,6 @@ function updateStatusChart(pending, paid, overdue) {
                 }
             }
         }
-    });
-}
-
-// CORRECCIÓN: Mejorar actualización de actividad reciente
-function updateRecentActivityUI(activities) {
-    const activityList = document.getElementById('recentActivity');
-    if (!activityList) return;
-    
-    activityList.innerHTML = '';
-    
-    if (activities.length === 0) {
-        activityList.innerHTML = `
-            <li class="activity-item">
-                <div class="activity-icon">
-                    <i class="fas fa-info-circle"></i>
-                </div>
-                <div class="activity-content">
-                    <div class="activity-title">Sin actividad reciente</div>
-                    <div class="activity-time">Las actividades de las últimas 24 horas aparecerán aquí</div>
-                </div>
-            </li>
-        `;
-        return;
-    }
-    
-    activities.slice(0, 10).forEach(activity => {
-        const li = document.createElement('li');
-        li.className = 'activity-item';
-        
-        let icon = 'fas fa-info-circle';
-        let color = 'var(--primary)';
-        
-        switch(activity.tipo) {
-            case 'cobranza':
-                icon = 'fas fa-file-invoice-dollar';
-                break;
-            case 'abono':
-                icon = 'fas fa-hand-holding-usd';
-                color = 'var(--success)';
-                break;
-            case 'mensaje':
-                icon = 'fas fa-envelope';
-                color = 'var(--warning)';
-                break;
-            case 'pago':
-                icon = 'fas fa-check-circle';
-                color = 'var(--success)';
-                break;
-            case 'sistema':
-                icon = 'fas fa-cog';
-                color = 'var(--gray)';
-                break;
-        }
-        
-        li.innerHTML = `
-            <div class="activity-icon" style="background-color: ${color}20; color: ${color};">
-                <i class="${icon}"></i>
-            </div>
-            <div class="activity-content">
-                <div class="activity-title">${activity.descripcion}</div>
-                <div class="activity-time">${formatRelativeTime(activity.fecha)}</div>
-                ${activity.detalles ? `<div class="activity-details" style="font-size: 0.8rem; color: var(--gray); margin-top: 5px;">${activity.detalles}</div>` : ''}
-            </div>
-        `;
-        
-        activityList.appendChild(li);
     });
 }
 
