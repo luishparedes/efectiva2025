@@ -270,11 +270,19 @@
             border-radius: 16px;
             padding: 20px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
         }
 
         .chart-card h3 {
             margin-bottom: 15px;
             font-weight: 600;
+        }
+
+        .chart-container {
+            flex: 1;
+            position: relative;
         }
 
         .recent-activity {
@@ -668,9 +676,75 @@
             font-size: 0.9rem;
             color: var(--gray);
         }
+
+        /* Abonos styles */
+        .abonos-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .abono-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .abono-item:last-child {
+            border-bottom: none;
+        }
+
+        .abono-info {
+            flex: 1;
+        }
+
+        .abono-fecha {
+            font-size: 0.85rem;
+            color: var(--gray);
+        }
+
+        .saldo-restante {
+            font-weight: bold;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Loading states */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            z-index: 1001;
+            display: none;
+        }
+
+        .connection-online {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .connection-offline {
+            background-color: var(--danger);
+            color: white;
+        }
     </style>
 </head>
 <body>
+    <!-- Connection Status Indicator -->
+    <div id="connectionStatus" class="connection-status"></div>
+
     <!-- Header -->
     <header>
         <div class="container">
@@ -785,7 +859,9 @@
             <div class="charts-container">
                 <div class="chart-card">
                     <h3>Estado de Cobranzas</h3>
-                    <canvas id="statusChart" height="250"></canvas>
+                    <div class="chart-container">
+                        <canvas id="statusChart"></canvas>
+                    </div>
                 </div>
                 <div class="chart-card">
                     <h3>Actividad Reciente</h3>
@@ -861,6 +937,7 @@
                             <th>Contenido</th>
                             <th>Destinatario</th>
                             <th>Fecha</th>
+                            <th>Estado</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -908,6 +985,11 @@
         <div class="admin-panel" id="admin" style="display: none;">
             <div class="dashboard-header">
                 <h1 class="dashboard-title">Panel de Administración</h1>
+            </div>
+
+            <div class="alert alert-warning" id="adminConnectionAlert" style="display: none;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Problema de conexión con Firebase. Verifica tu conexión a internet.</span>
             </div>
 
             <div class="stats-grid">
@@ -981,7 +1063,7 @@
                     <input type="email" id="clientEmail" class="form-control">
                 </div>
                 <div class="form-group">
-                    <label for="amount">Monto</label>
+                    <label for="amount">Monto Total</label>
                     <input type="number" id="amount" class="form-control" step="0.01" min="0" required>
                 </div>
                 <div class="form-group">
@@ -997,6 +1079,36 @@
                     <textarea id="notes" class="form-control" rows="3"></textarea>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;" id="cobranzaSubmitBtn">Guardar Cobranza</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Abonos -->
+    <div class="modal" id="abonoModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Registrar Abono</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <form id="abonoForm">
+                <input type="hidden" id="abonoCobranzaId">
+                <div class="form-group">
+                    <label for="abonoMonto">Monto del Abono</label>
+                    <input type="number" id="abonoMonto" class="form-control" step="0.01" min="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="abonoFecha">Fecha del Abono</label>
+                    <input type="date" id="abonoFecha" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="abonoNotas">Notas (opcional)</label>
+                    <textarea id="abonoNotas" class="form-control" rows="2" placeholder="Ej: Pago parcial, transferencia, etc."></textarea>
+                </div>
+                <div class="form-group">
+                    <p><strong>Deuda total:</strong> $<span id="deudaTotal">0</span></p>
+                    <p><strong>Saldo después del abono:</strong> $<span id="saldoDespues">0</span></p>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Registrar Abono</button>
             </form>
         </div>
     </div>
@@ -1038,7 +1150,9 @@
                         <option value="email">Email</option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Enviar Mensaje</button>
+                <button type="submit" class="btn btn-primary" style="width: 100%;" id="sendMessageBtn">
+                    <i class="fab fa-whatsapp"></i> Enviar Mensaje
+                </button>
             </form>
         </div>
     </div>
@@ -1056,6 +1170,9 @@
             <div style="text-align: center; margin-top: 20px;">
                 <button class="btn btn-primary" id="printReciboBtn">
                     <i class="fas fa-print"></i> Imprimir Recibo
+                </button>
+                <button class="btn btn-outline" id="sendReciboBtn">
+                    <i class="fas fa-paper-plane"></i> Enviar por Email
                 </button>
             </div>
         </div>
@@ -1105,6 +1222,7 @@
         const registerForm = document.getElementById('registerForm');
         const companyForm = document.getElementById('companyForm');
         const cobranzaForm = document.getElementById('cobranzaForm');
+        const abonoForm = document.getElementById('abonoForm');
         const messageForm = document.getElementById('messageForm');
         const switchToRegister = document.getElementById('switchToRegister');
         const switchToLogin = document.getElementById('switchToLogin');
@@ -1119,6 +1237,7 @@
         const exportExcelBtn = document.getElementById('exportExcelBtn');
         const refreshUsersBtn = document.getElementById('refreshUsersBtn');
         const cobranzaModal = document.getElementById('cobranzaModal');
+        const abonoModal = document.getElementById('abonoModal');
         const messageModal = document.getElementById('messageModal');
         const reciboModal = document.getElementById('reciboModal');
         const closeModals = document.querySelectorAll('.close-modal');
@@ -1128,9 +1247,15 @@
         const cobranzaSubmitBtn = document.getElementById('cobranzaSubmitBtn');
         const cobranzaIdInput = document.getElementById('cobranzaId');
         const printReciboBtn = document.getElementById('printReciboBtn');
+        const sendReciboBtn = document.getElementById('sendReciboBtn');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const adminConnectionAlert = document.getElementById('adminConnectionAlert');
 
         // Inicialización de la aplicación
         document.addEventListener('DOMContentLoaded', function() {
+            // Configurar monitoreo de conexión
+            setupConnectionMonitoring();
+            
             // Configurar listeners de autenticación
             setupAuthListeners();
             
@@ -1147,6 +1272,31 @@
             });
         });
 
+        // Configurar monitoreo de conexión
+        function setupConnectionMonitoring() {
+            // Monitorear estado de conexión de Firebase
+            const databaseRef = database.ref('.info/connected');
+            databaseRef.on('value', (snapshot) => {
+                const connected = snapshot.val();
+                if (connected) {
+                    connectionStatus.textContent = 'Conectado';
+                    connectionStatus.className = 'connection-status connection-online';
+                    connectionStatus.style.display = 'block';
+                    adminConnectionAlert.style.display = 'none';
+                    
+                    // Ocultar después de 3 segundos
+                    setTimeout(() => {
+                        connectionStatus.style.display = 'none';
+                    }, 3000);
+                } else {
+                    connectionStatus.textContent = 'Sin conexión';
+                    connectionStatus.className = 'connection-status connection-offline';
+                    connectionStatus.style.display = 'block';
+                    adminConnectionAlert.style.display = 'flex';
+                }
+            });
+        }
+
         // Configurar listeners de autenticación
         function setupAuthListeners() {
             // Switch entre login y registro
@@ -1162,15 +1312,14 @@
                 loginCard.style.display = 'block';
             });
 
-            // Formulario de login - CORREGIDO: prevenir recarga
+            // Formulario de login
             loginForm.addEventListener('submit', function(e) {
-                e.preventDefault(); // ESTA LÍNEA EVITA LA RECARGA
+                e.preventDefault();
                 const email = document.getElementById('loginEmail').value;
                 const password = document.getElementById('loginPassword').value;
                 
                 auth.signInWithEmailAndPassword(email, password)
                     .then((userCredential) => {
-                        // Login exitoso
                         console.log('Usuario autenticado:', userCredential.user);
                         loginForm.reset();
                     })
@@ -1179,19 +1328,17 @@
                     });
             });
 
-            // Formulario de registro - CORREGIDO: prevenir recarga
+            // Formulario de registro
             registerForm.addEventListener('submit', function(e) {
-                e.preventDefault(); // ESTA LÍNEA EVITA LA RECARGA
+                e.preventDefault();
                 const name = document.getElementById('registerName').value;
                 const email = document.getElementById('registerEmail').value;
                 const password = document.getElementById('registerPassword').value;
                 
                 auth.createUserWithEmailAndPassword(email, password)
                     .then((userCredential) => {
-                        // Usuario creado exitosamente
                         const user = userCredential.user;
                         
-                        // Guardar datos adicionales del usuario en Realtime Database
                         return database.ref('users/' + user.uid).set({
                             email: user.email,
                             nombre: name,
@@ -1244,23 +1391,16 @@
 
         // Cargar datos del usuario desde Realtime Database
         function loadUserData(userId) {
-            // Cargar datos del usuario
             database.ref('users/' + userId).once('value')
                 .then((snapshot) => {
                     if (snapshot.exists()) {
                         userData = snapshot.val();
                         userData.userId = userId;
                         
-                        // Actualizar UI con datos del usuario
                         updateUserUI();
-                        
-                        // Cargar datos de la empresa
                         loadCompanyData(userId);
-                        
-                        // Cargar cobranzas
                         loadCobranzas(userId);
                         
-                        // Si es admin, cargar panel de administración
                         if (userData.email === 'admin@ppbcobranza.com') {
                             document.querySelectorAll('.admin-only').forEach(el => {
                                 el.style.display = 'block';
@@ -1282,7 +1422,6 @@
                         companyData = snapshot.val();
                         companyData.userId = userId;
                         
-                        // Rellenar formulario de empresa
                         document.getElementById('companyName').value = companyData.nombre || '';
                         document.getElementById('companyRif').value = companyData.rif || '';
                         document.getElementById('companyPhone').value = companyData.telefono || '';
@@ -1302,16 +1441,21 @@
                 snapshot.forEach((childSnapshot) => {
                     const cobranza = childSnapshot.val();
                     cobranza.id = childSnapshot.key;
+                    
+                    // Cargar abonos para esta cobranza
+                    loadAbonos(cobranza.id).then(abonos => {
+                        cobranza.abonos = abonos || [];
+                        cobranza.saldoPendiente = calcularSaldoPendiente(cobranza);
+                    });
+                    
                     cobranzas.push(cobranza);
                 });
                 
-                // Ordenar por fecha de emisión (más reciente primero)
                 cobranzas.sort((a, b) => new Date(b.fechaEmision) - new Date(a.fechaEmision));
                 
                 updateCobranzasUI();
                 updateDashboardStats();
                 
-                // Mostrar alerta si el usuario free tiene 3 o más cobranzas
                 if (userData.plan === 'free' && cobranzas.length >= 3) {
                     freeLimitAlert.style.display = 'flex';
                 } else {
@@ -1320,12 +1464,35 @@
             });
         }
 
+        // Cargar abonos para una cobranza
+        function loadAbonos(cobranzaId) {
+            return database.ref('abonos').orderByChild('cobranzaId').equalTo(cobranzaId).once('value')
+                .then((snapshot) => {
+                    const abonos = [];
+                    snapshot.forEach((childSnapshot) => {
+                        const abono = childSnapshot.val();
+                        abono.id = childSnapshot.key;
+                        abonos.push(abono);
+                    });
+                    return abonos;
+                })
+                .catch((error) => {
+                    console.error('Error al cargar abonos:', error);
+                    return [];
+                });
+        }
+
+        // Calcular saldo pendiente
+        function calcularSaldoPendiente(cobranza) {
+            const totalAbonado = cobranza.abonos ? cobranza.abonos.reduce((sum, abono) => sum + parseFloat(abono.monto), 0) : 0;
+            return parseFloat(cobranza.monto) - totalAbonado;
+        }
+
         // Actualizar UI con datos del usuario
         function updateUserUI() {
             userName.textContent = userData.nombre;
             userAvatar.textContent = userData.nombre.charAt(0).toUpperCase();
             
-            // Mostrar información del plan
             const planBadge = document.createElement('span');
             planBadge.className = `plan-badge plan-${userData.plan}`;
             planBadge.textContent = userData.plan === 'free' ? 'Free' : 'Pro';
@@ -1333,7 +1500,7 @@
             userInfo.appendChild(planBadge);
         }
 
-        // Actualizar UI de cobranzas - CORREGIDO: filtros funcionando
+        // Actualizar UI de cobranzas
         function updateCobranzasUI() {
             cobranzasTableBody.innerHTML = '';
             
@@ -1357,17 +1524,16 @@
                 return;
             }
             
-            // FILTROS FUNCIONANDO: Filtrar cobranzas según la pestaña activa
             let filteredCobranzas = cobranzas;
             if (currentTab === 'pending') {
-                filteredCobranzas = cobranzas.filter(c => c.estado === 'pendiente');
+                filteredCobranzas = cobranzas.filter(c => c.estado === 'pendiente' && c.saldoPendiente > 0);
             } else if (currentTab === 'paid') {
-                filteredCobranzas = cobranzas.filter(c => c.estado === 'pagado');
+                filteredCobranzas = cobranzas.filter(c => c.estado === 'pagado' || c.saldoPendiente <= 0);
             } else if (currentTab === 'overdue') {
                 filteredCobranzas = cobranzas.filter(c => {
                     const today = new Date();
                     const dueDate = new Date(c.fechaVencimiento);
-                    return c.estado !== 'pagado' && dueDate < today;
+                    return (c.estado !== 'pagado' && c.saldoPendiente > 0) && dueDate < today;
                 });
             }
             
@@ -1386,15 +1552,15 @@
             filteredCobranzas.forEach(cobranza => {
                 const tr = document.createElement('tr');
                 
-                // Determinar estado y clase CSS
                 let estado = 'pendiente';
                 let estadoClass = 'status-pending';
                 let estadoText = 'Pendiente';
                 
                 const today = new Date();
                 const dueDate = new Date(cobranza.fechaVencimiento);
+                const saldoPendiente = cobranza.saldoPendiente || calcularSaldoPendiente(cobranza);
                 
-                if (cobranza.estado === 'pagado') {
+                if (cobranza.estado === 'pagado' || saldoPendiente <= 0) {
                     estado = 'pagado';
                     estadoClass = 'status-paid';
                     estadoText = 'Pagado';
@@ -1405,13 +1571,27 @@
                 }
                 
                 tr.innerHTML = `
-                    <td>${cobranza.cliente}</td>
-                    <td>$${cobranza.monto}</td>
+                    <td>
+                        <strong>${cobranza.cliente}</strong>
+                        ${cobranza.abonos && cobranza.abonos.length > 0 ? 
+                          `<br><small>${cobranza.abonos.length} abono(s)</small>` : ''}
+                    </td>
+                    <td>
+                        $${cobranza.monto}
+                        ${saldoPendiente < parseFloat(cobranza.monto) ? 
+                          `<br><small>Saldo: $${saldoPendiente.toFixed(2)}</small>` : ''}
+                    </td>
                     <td>${formatDate(cobranza.fechaEmision)}</td>
                     <td>${formatDate(cobranza.fechaVencimiento)}</td>
                     <td><span class="status-badge ${estadoClass}">${estadoText}</span></td>
                     <td>
                         <div class="action-buttons">
+                            <button class="btn-icon" title="Registrar abono" data-id="${cobranza.id}">
+                                <i class="fas fa-hand-holding-usd" style="color: var(--success);"></i>
+                            </button>
+                            <button class="btn-icon" title="Ver abonos" data-id="${cobranza.id}">
+                                <i class="fas fa-list" style="color: var(--primary);"></i>
+                            </button>
                             <button class="btn-icon" title="Generar recibo" data-id="${cobranza.id}">
                                 <i class="fas fa-receipt" style="color: var(--primary);"></i>
                             </button>
@@ -1434,50 +1614,158 @@
                 cobranzasTableBody.appendChild(tr);
             });
             
-            // Añadir event listeners a los botones de acción
             document.querySelectorAll('.action-buttons .btn-icon').forEach(button => {
                 button.addEventListener('click', function() {
                     const cobranzaId = this.getAttribute('data-id');
                     const action = this.querySelector('i').className;
                     
-                    if (action.includes('fa-check')) {
+                    if (action.includes('fa-hand-holding-usd')) {
+                        openAbonoModal(cobranzaId);
+                    } else if (action.includes('fa-list')) {
+                        verAbonos(cobranzaId);
+                    } else if (action.includes('fa-check')) {
                         markAsPaid(cobranzaId);
                     } else if (action.includes('fa-trash')) {
                         deleteCobranza(cobranzaId);
                     } else if (action.includes('fa-envelope')) {
                         openMessageModalForCobranza(cobranzaId);
                     } else if (action.includes('fa-edit')) {
-                        editCobranza(cobranzaId); // NUEVA FUNCIÓN DE EDICIÓN
+                        editCobranza(cobranzaId);
                     } else if (action.includes('fa-receipt')) {
-                        generateRecibo(cobranzaId); // NUEVA FUNCIÓN DE RECIBO
+                        generateRecibo(cobranzaId);
                     }
                 });
             });
         }
 
+        // Abrir modal para registrar abono
+        function openAbonoModal(cobranzaId) {
+            const cobranza = cobranzas.find(c => c.id === cobranzaId);
+            if (!cobranza) return;
+            
+            document.getElementById('abonoCobranzaId').value = cobranzaId;
+            document.getElementById('deudaTotal').textContent = cobranza.monto;
+            
+            const saldoPendiente = cobranza.saldoPendiente || calcularSaldoPendiente(cobranza);
+            document.getElementById('abonoMonto').setAttribute('max', saldoPendiente);
+            document.getElementById('abonoMonto').value = '';
+            document.getElementById('abonoFecha').valueAsDate = new Date();
+            document.getElementById('abonoNotas').value = '';
+            
+            // Actualizar saldo después en tiempo real
+            document.getElementById('abonoMonto').addEventListener('input', function() {
+                const montoAbono = parseFloat(this.value) || 0;
+                const nuevoSaldo = saldoPendiente - montoAbono;
+                document.getElementById('saldoDespues').textContent = nuevoSaldo.toFixed(2);
+            });
+            
+            document.getElementById('saldoDespues').textContent = saldoPendiente.toFixed(2);
+            
+            abonoModal.classList.add('active');
+        }
+
+        // Ver abonos de una cobranza
+        function verAbonos(cobranzaId) {
+            const cobranza = cobranzas.find(c => c.id === cobranzaId);
+            if (!cobranza) return;
+            
+            let abonosHTML = '';
+            if (cobranza.abonos && cobranza.abonos.length > 0) {
+                cobranza.abonos.forEach(abono => {
+                    abonosHTML += `
+                        <div class="abono-item">
+                            <div class="abono-info">
+                                <strong>$${abono.monto}</strong>
+                                <div class="abono-fecha">${formatDate(abono.fecha)}</div>
+                                ${abono.notas ? `<small>${abono.notas}</small>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                abonosHTML = '<p>No hay abonos registrados</p>';
+            }
+            
+            const saldoPendiente = cobranza.saldoPendiente || calcularSaldoPendiente(cobranza);
+            
+            const modalHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 class="modal-title">Abonos - ${cobranza.cliente}</h3>
+                        <button class="close-modal">&times;</button>
+                    </div>
+                    <div>
+                        <p><strong>Deuda total:</strong> $${cobranza.monto}</p>
+                        <p><strong>Total abonado:</strong> $${(parseFloat(cobranza.monto) - saldoPendiente).toFixed(2)}</p>
+                        <p><strong>Saldo pendiente:</strong> $${saldoPendiente.toFixed(2)}</p>
+                        
+                        <div class="abonos-section">
+                            <h4>Historial de Abonos</h4>
+                            ${abonosHTML}
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 20px;">
+                            <button class="btn btn-primary" id="addAbonoFromList" data-id="${cobranzaId}">
+                                <i class="fas fa-plus"></i> Agregar Abono
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const modal = document.createElement('div');
+            modal.className = 'modal active';
+            modal.innerHTML = modalHTML;
+            document.body.appendChild(modal);
+            
+            modal.querySelector('.close-modal').addEventListener('click', function() {
+                modal.remove();
+            });
+            
+            modal.querySelector('#addAbonoFromList').addEventListener('click', function() {
+                modal.remove();
+                openAbonoModal(cobranzaId);
+            });
+            
+            window.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+
         // Actualizar estadísticas del dashboard
         function updateDashboardStats() {
-            const pending = cobranzas.filter(c => c.estado === 'pendiente').length;
-            const paid = cobranzas.filter(c => c.estado === 'pagado').length;
+            const pending = cobranzas.filter(c => {
+                const saldoPendiente = c.saldoPendiente || calcularSaldoPendiente(c);
+                return c.estado !== 'pagado' && saldoPendiente > 0;
+            }).length;
+            
+            const paid = cobranzas.filter(c => {
+                const saldoPendiente = c.saldoPendiente || calcularSaldoPendiente(c);
+                return c.estado === 'pagado' || saldoPendiente <= 0;
+            }).length;
+            
             const overdue = cobranzas.filter(c => {
-                const dueDate = new Date(c.fechaVencimiento);
                 const today = new Date();
-                return c.estado !== 'pagado' && dueDate < today;
+                const dueDate = new Date(c.fechaVencimiento);
+                const saldoPendiente = c.saldoPendiente || calcularSaldoPendiente(c);
+                return c.estado !== 'pagado' && saldoPendiente > 0 && dueDate < today;
             }).length;
             
             const totalAmount = cobranzas
-                .filter(c => c.estado !== 'pagado')
-                .reduce((sum, c) => sum + parseFloat(c.monto), 0);
+                .filter(c => {
+                    const saldoPendiente = c.saldoPendiente || calcularSaldoPendiente(c);
+                    return c.estado !== 'pagado' && saldoPendiente > 0;
+                })
+                .reduce((sum, c) => sum + (c.saldoPendiente || calcularSaldoPendiente(c)), 0);
             
             document.getElementById('pendingCount').textContent = pending;
             document.getElementById('paidCount').textContent = paid;
             document.getElementById('overdueCount').textContent = overdue;
             document.getElementById('totalAmount').textContent = `$${totalAmount.toFixed(2)}`;
             
-            // Actualizar gráfico
             updateStatusChart(pending, paid, overdue);
-            
-            // Actualizar actividad reciente
             updateRecentActivity();
         }
 
@@ -1485,7 +1773,6 @@
         function updateStatusChart(pending, paid, overdue) {
             const ctx = document.getElementById('statusChart').getContext('2d');
             
-            // Destruir gráfico anterior si existe
             if (statusChart) {
                 statusChart.destroy();
             }
@@ -1526,12 +1813,33 @@
             const activityList = document.getElementById('recentActivity');
             activityList.innerHTML = '';
             
-            // Obtener las 5 cobranzas más recientes
-            const recentCobranzas = [...cobranzas]
-                .sort((a, b) => new Date(b.fechaCreacion) - new Date(a.fechaCreacion))
-                .slice(0, 5);
+            const recentActivities = [];
             
-            if (recentCobranzas.length === 0) {
+            cobranzas.forEach(cobranza => {
+                recentActivities.push({
+                    type: 'cobranza',
+                    title: `Nueva cobranza para ${cobranza.cliente}`,
+                    time: cobranza.fechaCreacion,
+                    icon: 'fas fa-plus'
+                });
+                
+                if (cobranza.abonos) {
+                    cobranza.abonos.forEach(abono => {
+                        recentActivities.push({
+                            type: 'abono',
+                            title: `Abono de $${abono.monto} - ${cobranza.cliente}`,
+                            time: abono.fecha,
+                            icon: 'fas fa-hand-holding-usd'
+                        });
+                    });
+                }
+            });
+            
+            recentActivities.sort((a, b) => new Date(b.time) - new Date(a.time));
+            
+            const recentItems = recentActivities.slice(0, 5);
+            
+            if (recentItems.length === 0) {
                 activityList.innerHTML = `
                     <li class="activity-item">
                         <div class="activity-icon">
@@ -1546,26 +1854,17 @@
                 return;
             }
             
-            recentCobranzas.forEach(cobranza => {
+            recentItems.forEach(activity => {
                 const li = document.createElement('li');
                 li.className = 'activity-item';
                 
-                let icon = 'fas fa-plus';
-                let title = `Nueva cobranza para ${cobranza.cliente}`;
-                let time = formatRelativeTime(cobranza.fechaCreacion);
-                
-                if (cobranza.estado === 'pagado') {
-                    icon = 'fas fa-check';
-                    title = `Cobranza pagada - ${cobranza.cliente}`;
-                }
-                
                 li.innerHTML = `
                     <div class="activity-icon">
-                        <i class="${icon}"></i>
+                        <i class="${activity.icon}"></i>
                     </div>
                     <div class="activity-content">
-                        <div class="activity-title">${title}</div>
-                        <div class="activity-time">${time}</div>
+                        <div class="activity-title">${activity.title}</div>
+                        <div class="activity-time">${formatRelativeTime(activity.time)}</div>
                     </div>
                 `;
                 
@@ -1582,16 +1881,9 @@
             registerBtn.style.display = 'none';
             logoutBtn.style.display = 'block';
             
-            // Configurar navegación
             setupNavigation();
-            
-            // Configurar modales
             setupModals();
-            
-            // Configurar formularios
             setupForms();
-            
-            // Configurar tabs
             setupTabs();
         }
 
@@ -1617,24 +1909,18 @@
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
                     
-                    // Remover clase active de todos los enlaces
                     navLinks.forEach(l => l.classList.remove('active'));
-                    
-                    // Añadir clase active al enlace clickeado
                     this.classList.add('active');
                     
-                    // Ocultar todas las secciones
                     dashboard.style.display = 'none';
                     cobranzasSection.style.display = 'none';
                     mensajesSection.style.display = 'none';
                     empresaSection.style.display = 'none';
                     adminSection.style.display = 'none';
                     
-                    // Mostrar la sección correspondiente
                     const target = this.getAttribute('data-target');
                     document.getElementById(target).style.display = 'block';
                     
-                    // Si es el panel de admin, cargar datos
                     if (target === 'admin') {
                         loadAdminData();
                     }
@@ -1644,44 +1930,53 @@
 
         // Configurar modales
         function setupModals() {
-            // Botones para abrir modales
             addCobranzaBtn.addEventListener('click', openCobranzaModal);
             addCobranzaBtn2.addEventListener('click', openCobranzaModal);
             addMessageBtn.addEventListener('click', openMessageModal);
             
-            // Cerrar modales
             closeModals.forEach(btn => {
                 btn.addEventListener('click', function() {
                     cobranzaModal.classList.remove('active');
+                    abonoModal.classList.remove('active');
                     messageModal.classList.remove('active');
                     reciboModal.classList.remove('active');
                 });
             });
             
-            // Cerrar modal al hacer clic fuera
             window.addEventListener('click', function(e) {
-                if (e.target === cobranzaModal) {
-                    cobranzaModal.classList.remove('active');
-                }
-                if (e.target === messageModal) {
-                    messageModal.classList.remove('active');
-                }
-                if (e.target === reciboModal) {
-                    reciboModal.classList.remove('active');
-                }
+                if (e.target === cobranzaModal) cobranzaModal.classList.remove('active');
+                if (e.target === abonoModal) abonoModal.classList.remove('active');
+                if (e.target === messageModal) messageModal.classList.remove('active');
+                if (e.target === reciboModal) reciboModal.classList.remove('active');
             });
             
-            // Imprimir recibo
             printReciboBtn.addEventListener('click', function() {
-                window.print();
+                const reciboContent = document.getElementById('reciboContent').innerHTML;
+                const ventana = window.open('', '_blank');
+                ventana.document.write(`
+                    <html>
+                        <head>
+                            <title>Recibo de Cobranza</title>
+                            <style>
+                                body { font-family: Arial, sans-serif; padding: 20px; }
+                                .recibo-container { max-width: 600px; margin: 0 auto; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="recibo-container">${reciboContent}</div>
+                        </body>
+                    </html>
+                `);
+                ventana.document.close();
+                ventana.print();
             });
         }
 
-        // Configurar formularios - CORREGIDO: prevenir recargas
+        // Configurar formularios
         function setupForms() {
-            // Formulario de empresa - CORREGIDO: prevenir recarga
+            // Formulario de empresa
             companyForm.addEventListener('submit', function(e) {
-                e.preventDefault(); // EVITA RECARGA
+                e.preventDefault();
                 
                 const companyData = {
                     userId: currentUser.uid,
@@ -1693,7 +1988,6 @@
                     fechaActualizacion: new Date().toISOString()
                 };
                 
-                // Guardar datos de la empresa
                 database.ref('empresas/' + currentUser.uid).set(companyData)
                     .then(() => {
                         alert('Datos de empresa guardados correctamente');
@@ -1704,11 +1998,10 @@
                     });
             });
             
-            // Formulario de cobranza - CORREGIDO: prevenir recarga
+            // Formulario de cobranza
             cobranzaForm.addEventListener('submit', function(e) {
-                e.preventDefault(); // EVITA RECARGA
+                e.preventDefault();
                 
-                // Verificar límite para usuarios free
                 if (userData.plan === 'free' && cobranzas.length >= 3 && !cobranzaIdInput.value) {
                     alert('Has alcanzado el límite de 3 cobranzas para el plan Free. Contacta al administrador para actualizar a Pro.');
                     return;
@@ -1724,12 +2017,11 @@
                     fechaVencimiento: document.getElementById('dueDate').value,
                     estado: 'pendiente',
                     notas: document.getElementById('notes').value,
-                    fechaCreacion: new Date().toISOString()
+                    fechaCreacion: new Date().toISOString(),
+                    saldoPendiente: parseFloat(document.getElementById('amount').value)
                 };
                 
-                // Si estamos editando, actualizar; si no, crear nueva
                 if (cobranzaIdInput.value) {
-                    // Actualizar cobranza existente
                     database.ref('cobranzas/' + cobranzaIdInput.value).update(cobranzaData)
                         .then(() => {
                             alert('Cobranza actualizada correctamente');
@@ -1743,7 +2035,6 @@
                             alert('Error al actualizar cobranza: ' + error.message);
                         });
                 } else {
-                    // Crear nueva cobranza
                     database.ref('cobranzas').push(cobranzaData)
                         .then(() => {
                             alert('Cobranza agregada correctamente');
@@ -1756,9 +2047,55 @@
                 }
             });
             
-            // Formulario de mensaje - CORREGIDO: prevenir recarga
+            // Formulario de abono
+            abonoForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const cobranzaId = document.getElementById('abonoCobranzaId').value;
+                const cobranza = cobranzas.find(c => c.id === cobranzaId);
+                
+                if (!cobranza) {
+                    alert('Cobranza no encontrada');
+                    return;
+                }
+                
+                const abonoData = {
+                    cobranzaId: cobranzaId,
+                    userId: currentUser.uid,
+                    monto: parseFloat(document.getElementById('abonoMonto').value),
+                    fecha: document.getElementById('abonoFecha').value,
+                    notas: document.getElementById('abonoNotas').value,
+                    fechaRegistro: new Date().toISOString()
+                };
+                
+                database.ref('abonos').push(abonoData)
+                    .then(() => {
+                        // Actualizar saldo pendiente en la cobranza
+                        const nuevoSaldo = calcularSaldoPendiente(cobranza) - abonoData.monto;
+                        database.ref('cobranzas/' + cobranzaId).update({
+                            saldoPendiente: nuevoSaldo
+                        })
+                        .then(() => {
+                            alert('Abono registrado correctamente');
+                            abonoForm.reset();
+                            abonoModal.classList.remove('active');
+                            
+                            // Si el saldo llega a cero, marcar como pagado
+                            if (nuevoSaldo <= 0) {
+                                database.ref('cobranzas/' + cobranzaId).update({
+                                    estado: 'pagado'
+                                });
+                            }
+                        });
+                    })
+                    .catch((error) => {
+                        alert('Error al registrar abono: ' + error.message);
+                    });
+            });
+            
+            // Formulario de mensaje
             messageForm.addEventListener('submit', function(e) {
-                e.preventDefault(); // EVITA RECARGA
+                e.preventDefault();
                 
                 const clientId = document.getElementById('messageClient').value;
                 const client = cobranzas.find(c => c.id === clientId);
@@ -1776,10 +2113,14 @@
                     clienteId: clientId,
                     canal: document.getElementById('messageChannel').value,
                     fechaEnvio: new Date().toISOString(),
-                    estado: 'enviado'
+                    estado: 'pendiente'
                 };
                 
-                // Guardar mensaje
+                // Enviar mensaje por WhatsApp si está seleccionado
+                if (messageData.canal === 'whatsapp') {
+                    enviarWhatsApp(client, messageData.contenido);
+                }
+                
                 database.ref('mensajes').push(messageData)
                     .then(() => {
                         alert('Mensaje enviado correctamente');
@@ -1807,12 +2148,10 @@
                 }
                 
                 if (content && document.getElementById('messageClient').value) {
-                    // Obtener datos del cliente seleccionado
                     const clientId = document.getElementById('messageClient').value;
                     const client = cobranzas.find(c => c.id === clientId);
                     
                     if (client && companyData) {
-                        // Reemplazar placeholders con datos reales
                         content = content
                             .replace('{cliente}', client.cliente)
                             .replace('{empresa}', companyData.nombre)
@@ -1825,44 +2164,34 @@
                 document.getElementById('messageContent').value = content;
             });
             
-            // Actualizar mensaje cuando se selecciona un cliente
             document.getElementById('messageClient').addEventListener('change', function() {
                 const type = document.getElementById('messageType').value;
                 if (type && type !== 'personalizado') {
-                    // Disparar el evento change para regenerar el mensaje
                     document.getElementById('messageType').dispatchEvent(new Event('change'));
                 }
             });
         }
 
-        // Configurar tabs - CORREGIDO: filtros funcionando
+        // Configurar tabs
         function setupTabs() {
             tabs.forEach(tab => {
                 tab.addEventListener('click', function() {
-                    // Remover clase active de todas las tabs
                     tabs.forEach(t => t.classList.remove('active'));
-                    
-                    // Añadir clase active a la tab clickeada
                     this.classList.add('active');
-                    
-                    // Actualizar la pestaña activa y filtrar cobranzas
                     currentTab = this.getAttribute('data-tab');
-                    updateCobranzasUI(); // ESTA LÍNEA HACE QUE LOS FILTROS FUNCIONEN
+                    updateCobranzasUI();
                 });
             });
         }
 
         // Abrir modal de cobranza
         function openCobranzaModal() {
-            // Establecer fecha de emisión como hoy
             document.getElementById('issueDate').valueAsDate = new Date();
             
-            // Establecer fecha de vencimiento como 30 días desde hoy
             const dueDate = new Date();
             dueDate.setDate(dueDate.getDate() + 30);
             document.getElementById('dueDate').valueAsDate = dueDate;
             
-            // Limpiar formulario
             cobranzaForm.reset();
             cobranzaIdInput.value = '';
             cobranzaModalTitle.textContent = 'Nueva Cobranza';
@@ -1871,12 +2200,11 @@
             cobranzaModal.classList.add('active');
         }
 
-        // NUEVA FUNCIÓN: Editar cobranza
+        // Editar cobranza
         function editCobranza(cobranzaId) {
             const cobranza = cobranzas.find(c => c.id === cobranzaId);
             if (!cobranza) return;
             
-            // Llenar el formulario con los datos de la cobranza
             document.getElementById('clientName').value = cobranza.cliente;
             document.getElementById('clientPhone').value = cobranza.telefono || '';
             document.getElementById('clientEmail').value = cobranza.email || '';
@@ -1885,25 +2213,21 @@
             document.getElementById('dueDate').value = cobranza.fechaVencimiento;
             document.getElementById('notes').value = cobranza.notas || '';
             
-            // Establecer el ID de la cobranza para edición
             cobranzaIdInput.value = cobranzaId;
-            
-            // Cambiar el título y texto del botón
             cobranzaModalTitle.textContent = 'Editar Cobranza';
             cobranzaSubmitBtn.textContent = 'Actualizar Cobranza';
             
-            // Abrir el modal
             cobranzaModal.classList.add('active');
         }
 
         // Abrir modal de mensaje
         function openMessageModal() {
-            // Limpiar y cargar select de clientes
             const clientSelect = document.getElementById('messageClient');
             clientSelect.innerHTML = '<option value="">Selecciona un cliente</option>';
             
             cobranzas.forEach(cobranza => {
-                if (cobranza.estado !== 'pagado') {
+                const saldoPendiente = cobranza.saldoPendiente || calcularSaldoPendiente(cobranza);
+                if (cobranza.estado !== 'pagado' && saldoPendiente > 0) {
                     const option = document.createElement('option');
                     option.value = cobranza.id;
                     option.textContent = cobranza.cliente;
@@ -1917,11 +2241,8 @@
         // Abrir modal de mensaje para una cobranza específica
         function openMessageModalForCobranza(cobranzaId) {
             openMessageModal();
-            
-            // Seleccionar el cliente automáticamente
             document.getElementById('messageClient').value = cobranzaId;
             
-            // Generar mensaje apropiado según la fecha de vencimiento
             const cobranza = cobranzas.find(c => c.id === cobranzaId);
             if (cobranza) {
                 const today = new Date();
@@ -1932,7 +2253,6 @@
                 let messageType = 'recordatorio_amable';
                 
                 if (diffDays < 0) {
-                    // Vencida
                     const daysOverdue = Math.abs(diffDays);
                     if (daysOverdue > 15) {
                         messageType = 'ultima_advertencia';
@@ -1948,28 +2268,72 @@
             }
         }
 
-        // NUEVA FUNCIÓN: Generar recibo
+        // Enviar mensaje por WhatsApp
+        function enviarWhatsApp(cliente, mensaje) {
+            const telefono = cliente.telefono;
+            if (!telefono) {
+                alert('El cliente no tiene número de teléfono registrado');
+                return;
+            }
+            
+            // Limpiar número de teléfono (remover caracteres no numéricos)
+            const telefonoLimpio = telefono.replace(/\D/g, '');
+            
+            // Codificar mensaje para URL
+            const mensajeCodificado = encodeURIComponent(mensaje);
+            
+            // Crear enlace de WhatsApp
+            const whatsappURL = `https://wa.me/${telefonoLimpio}?text=${mensajeCodificado}`;
+            
+            // Abrir en nueva pestaña
+            window.open(whatsappURL, '_blank');
+        }
+
+        // Generar recibo
         function generateRecibo(cobranzaId) {
             const cobranza = cobranzas.find(c => c.id === cobranzaId);
             if (!cobranza) return;
             
             const reciboContent = document.getElementById('reciboContent');
-            
-            // Calcular días restantes o vencidos
             const today = new Date();
             const dueDate = new Date(cobranza.fechaVencimiento);
             const diffTime = dueDate.getTime() - today.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             
+            const saldoPendiente = cobranza.saldoPendiente || calcularSaldoPendiente(cobranza);
+            const totalAbonado = parseFloat(cobranza.monto) - saldoPendiente;
+            
             let estadoRecibo = 'Pendiente';
             let estadoClase = 'status-pending';
             
-            if (cobranza.estado === 'pagado') {
+            if (cobranza.estado === 'pagado' || saldoPendiente <= 0) {
                 estadoRecibo = 'Pagado';
                 estadoClase = 'status-paid';
             } else if (diffDays < 0) {
                 estadoRecibo = 'Vencido';
                 estadoClase = 'status-overdue';
+            }
+            
+            let abonosHTML = '';
+            if (cobranza.abonos && cobranza.abonos.length > 0) {
+                abonosHTML = `
+                    <div class="abonos-section">
+                        <h4>Historial de Abonos</h4>
+                        ${cobranza.abonos.map(abono => `
+                            <div class="abono-item">
+                                <div class="abono-info">
+                                    <strong>$${abono.monto}</strong>
+                                    <div class="abono-fecha">${formatDate(abono.fecha)}</div>
+                                    ${abono.notas ? `<small>${abono.notas}</small>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                        <div class="saldo-restante">
+                            <strong>Total abonado:</strong> $${totalAbonado.toFixed(2)}<br>
+                            <strong>Saldo pendiente:</strong> $${saldoPendiente.toFixed(2)}
+                        </div>
+                    </div>
+                `;
             }
             
             reciboContent.innerHTML = `
@@ -1993,7 +2357,8 @@
                         <p><strong>Fecha de Emisión:</strong> ${formatDate(cobranza.fechaEmision)}</p>
                         <p><strong>Fecha de Vencimiento:</strong> ${formatDate(cobranza.fechaVencimiento)}</p>
                         <p><strong>Estado:</strong> <span class="status-badge ${estadoClase}">${estadoRecibo}</span></p>
-                        ${cobranza.estado !== 'pagado' ? `<p><strong>Días ${diffDays >= 0 ? 'restantes' : 'vencidos'}:</strong> ${Math.abs(diffDays)}</p>` : ''}
+                        ${cobranza.estado !== 'pagado' && saldoPendiente > 0 ? 
+                          `<p><strong>Días ${diffDays >= 0 ? 'restantes' : 'vencidos'}:</strong> ${Math.abs(diffDays)}</p>` : ''}
                     </div>
                 </div>
                 
@@ -2013,6 +2378,8 @@
                     <span>Total a Pagar:</span>
                     <span>$${cobranza.monto}</span>
                 </div>
+                
+                ${abonosHTML}
                 
                 ${cobranza.notas ? `
                 <div class="recibo-notes" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
@@ -2034,7 +2401,8 @@
         function markAsPaid(cobranzaId) {
             if (confirm('¿Estás seguro de que quieres marcar esta cobranza como pagada?')) {
                 database.ref('cobranzas/' + cobranzaId).update({
-                    estado: 'pagado'
+                    estado: 'pagado',
+                    saldoPendiente: 0
                 })
                 .then(() => {
                     alert('Cobranza marcada como pagada');
@@ -2048,13 +2416,25 @@
         // Eliminar cobranza
         function deleteCobranza(cobranzaId) {
             if (confirm('¿Estás seguro de que quieres eliminar esta cobranza?')) {
-                database.ref('cobranzas/' + cobranzaId).remove()
-                .then(() => {
-                    alert('Cobranza eliminada');
-                })
-                .catch((error) => {
-                    alert('Error al eliminar cobranza: ' + error.message);
-                });
+                // Primero eliminar todos los abonos asociados
+                database.ref('abonos').orderByChild('cobranzaId').equalTo(cobranzaId).once('value')
+                    .then((snapshot) => {
+                        const promises = [];
+                        snapshot.forEach((childSnapshot) => {
+                            promises.push(database.ref('abonos/' + childSnapshot.key).remove());
+                        });
+                        return Promise.all(promises);
+                    })
+                    .then(() => {
+                        // Luego eliminar la cobranza
+                        return database.ref('cobranzas/' + cobranzaId).remove();
+                    })
+                    .then(() => {
+                        alert('Cobranza eliminada');
+                    })
+                    .catch((error) => {
+                        alert('Error al eliminar cobranza: ' + error.message);
+                    });
             }
         }
 
@@ -2073,6 +2453,7 @@
                 })
                 .catch((error) => {
                     console.error('Error al cargar usuarios:', error);
+                    adminConnectionAlert.style.display = 'flex';
                 });
         }
 
@@ -2092,12 +2473,10 @@
                 return;
             }
             
-            // Actualizar estadísticas
             document.getElementById('totalUsers').textContent = users.length;
             document.getElementById('proUsers').textContent = users.filter(u => u.plan === 'pro').length;
             document.getElementById('inactiveUsers').textContent = users.filter(u => !u.activo).length;
             
-            // Contar total de cobranzas
             database.ref('cobranzas').once('value')
                 .then((snapshot) => {
                     document.getElementById('totalCobranzasAdmin').textContent = snapshot.numChildren();
@@ -2126,7 +2505,6 @@
                 
                 usersTableBody.appendChild(tr);
                 
-                // Contar cobranzas por usuario
                 database.ref('cobranzas').orderByChild('userId').equalTo(user.id).once('value')
                     .then((snapshot) => {
                         const count = snapshot.numChildren();
@@ -2134,7 +2512,6 @@
                     });
             });
             
-            // Añadir event listeners a los botones de acción
             document.querySelectorAll('.toggle-active').forEach(button => {
                 button.addEventListener('click', function() {
                     const userId = this.getAttribute('data-id');
@@ -2145,7 +2522,7 @@
                     })
                     .then(() => {
                         alert(`Usuario ${!currentActive ? 'activado' : 'desactivado'} correctamente`);
-                        loadAdminData(); // Recargar datos
+                        loadAdminData();
                     })
                     .catch((error) => {
                         alert('Error al actualizar usuario: ' + error.message);
@@ -2164,7 +2541,7 @@
                     })
                     .then(() => {
                         alert(`Usuario actualizado a plan ${newPlan}`);
-                        loadAdminData(); // Recargar datos
+                        loadAdminData();
                     })
                     .catch((error) => {
                         alert('Error al actualizar usuario: ' + error.message);
@@ -2175,25 +2552,24 @@
 
         // Exportar a Excel
         exportExcelBtn.addEventListener('click', function() {
-            // Preparar datos para exportar
-            const data = cobranzas.map(cobranza => ({
-                'Cliente': cobranza.cliente,
-                'Teléfono': cobranza.telefono || '',
-                'Monto': cobranza.monto,
-                'Estado': cobranza.estado,
-                'Fecha Emisión': formatDate(cobranza.fechaEmision),
-                'Fecha Vencimiento': formatDate(cobranza.fechaVencimiento),
-                'Notas': cobranza.notas || ''
-            }));
+            const data = cobranzas.map(cobranza => {
+                const saldoPendiente = cobranza.saldoPendiente || calcularSaldoPendiente(cobranza);
+                return {
+                    'Cliente': cobranza.cliente,
+                    'Teléfono': cobranza.telefono || '',
+                    'Monto Total': cobranza.monto,
+                    'Saldo Pendiente': saldoPendiente,
+                    'Abonos': cobranza.abonos ? cobranza.abonos.length : 0,
+                    'Estado': cobranza.estado,
+                    'Fecha Emisión': formatDate(cobranza.fechaEmision),
+                    'Fecha Vencimiento': formatDate(cobranza.fechaVencimiento),
+                    'Notas': cobranza.notas || ''
+                };
+            });
             
-            // Crear libro de trabajo
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.json_to_sheet(data);
-            
-            // Añadir hoja al libro
             XLSX.utils.book_append_sheet(wb, ws, 'Cobranzas');
-            
-            // Exportar
             XLSX.writeFile(wb, 'cobranzas.xlsx');
         });
 
@@ -2225,13 +2601,18 @@
             }
         }
 
-        // Actualizar datos de admin al hacer clic en el botón
+        // Actualizar datos de admin
         refreshUsersBtn.addEventListener('click', loadAdminData);
 
         // Enlace para actualizar plan
         upgradePlanLink.addEventListener('click', function(e) {
             e.preventDefault();
             alert('Para actualizar a Plan Pro, contacta al administrador: admin@ppbcobranza.com');
+        });
+
+        // Enviar recibo por email
+        sendReciboBtn.addEventListener('click', function() {
+            alert('Función de envío por email será implementada próximamente');
         });
     </script>
 </body>
