@@ -19,8 +19,10 @@ let currentUser = null;
 let userData = null;
 let companyData = null;
 let cobranzas = [];
+let proveedores = [];
 let statusChart = null;
 let currentTab = 'all';
+let currentTabProv = 'all-prov';
 
 // CORRECCIÓN 1: Solo tu correo como administrador
 const ADMIN_EMAIL = 'luishparedes94@gmail.com';
@@ -32,6 +34,7 @@ const loginCard = document.getElementById('loginCard');
 const registerCard = document.getElementById('registerCard');
 const dashboard = document.getElementById('dashboard');
 const cobranzasSection = document.getElementById('cobranzas');
+const proveedoresSection = document.getElementById('proveedores');
 const mensajesSection = document.getElementById('mensajes');
 const empresaSection = document.getElementById('empresa');
 const adminSection = document.getElementById('admin');
@@ -42,34 +45,50 @@ const userPlanBadge = document.getElementById('userPlanBadge');
 const loginBtn = document.getElementById('loginBtn');
 const registerBtn = document.getElementById('registerBtn');
 const logoutBtn = document.getElementById('logoutBtn');
+const notificationBtn = document.getElementById('notificationBtn');
+const notificationBadge = document.getElementById('notificationBadge');
+const notificationCenter = document.getElementById('notificationCenter');
+const closeNotifications = document.getElementById('closeNotifications');
+const notificationList = document.getElementById('notificationList');
 const loginForm = document.getElementById('loginForm');
 const registerForm = document.getElementById('registerForm');
 const companyForm = document.getElementById('companyForm');
 const cobranzaForm = document.getElementById('cobranzaForm');
+const proveedorForm = document.getElementById('proveedorForm');
 const abonoForm = document.getElementById('abonoForm');
+const pagoProveedorForm = document.getElementById('pagoProveedorForm');
 const messageForm = document.getElementById('messageForm');
 const switchToRegister = document.getElementById('switchToRegister');
 const switchToLogin = document.getElementById('switchToLogin');
 const navLinks = document.querySelectorAll('.nav-link');
 const tabs = document.querySelectorAll('.tab');
 const cobranzasTableBody = document.getElementById('cobranzasTableBody');
+const proveedoresTableBody = document.getElementById('proveedoresTableBody');
 const messagesTableBody = document.getElementById('messagesTableBody');
 const usersTableBody = document.getElementById('usersTableBody');
 const addCobranzaBtn = document.getElementById('addCobranzaBtn');
 const addCobranzaBtn2 = document.getElementById('addCobranzaBtn2');
+const addProveedorBtn = document.getElementById('addProveedorBtn');
+const addProveedorBtn2 = document.getElementById('addProveedorBtn2');
 const addMessageBtn = document.getElementById('addMessageBtn');
 const exportExcelBtn = document.getElementById('exportExcelBtn');
+const exportProveedoresBtn = document.getElementById('exportProveedoresBtn');
 const refreshUsersBtn = document.getElementById('refreshUsersBtn');
 const cobranzaModal = document.getElementById('cobranzaModal');
+const proveedorModal = document.getElementById('proveedorModal');
 const abonoModal = document.getElementById('abonoModal');
+const pagoProveedorModal = document.getElementById('pagoProveedorModal');
 const messageModal = document.getElementById('messageModal');
 const reciboModal = document.getElementById('reciboModal');
 const closeModals = document.querySelectorAll('.close-modal');
 const freeLimitAlert = document.getElementById('freeLimitAlert');
 const upgradePlanLink = document.getElementById('upgradePlanLink');
 const cobranzaModalTitle = document.getElementById('cobranzaModalTitle');
+const proveedorModalTitle = document.getElementById('proveedorModalTitle');
 const cobranzaSubmitBtn = document.getElementById('cobranzaSubmitBtn');
+const proveedorSubmitBtn = document.getElementById('proveedorSubmitBtn');
 const cobranzaIdInput = document.getElementById('cobranzaId');
+const proveedorIdInput = document.getElementById('proveedorId');
 const printReciboBtn = document.getElementById('printReciboBtn');
 const sendReciboBtn = document.getElementById('sendReciboBtn');
 const connectionStatus = document.getElementById('connectionStatus');
@@ -79,9 +98,11 @@ const mainNav = document.getElementById('mainNav');
 const messageChannel = document.getElementById('messageChannel');
 const messageIcon = document.getElementById('messageIcon');
 const messageText = document.getElementById('messageText');
+const upcomingList = document.getElementById('upcomingList');
 
 // CORRECCIÓN: Input de teléfono para permitir guiones
 const clientPhoneInput = document.getElementById('clientPhone');
+const proveedorPhoneInput = document.getElementById('proveedorPhone');
 
 // Inicialización de la aplicación
 document.addEventListener('DOMContentLoaded', function() {
@@ -96,6 +117,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Configurar cambio de ícono en mensajes
     setupMessageChannelListener();
+    
+    // Configurar notificaciones
+    setupNotifications();
     
     // CORRECCIÓN: Configurar input de teléfono para permitir guiones
     setupPhoneInput();
@@ -113,40 +137,109 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// Configurar sistema de notificaciones
+function setupNotifications() {
+    if (notificationBtn) {
+        notificationBtn.addEventListener('click', function() {
+            notificationCenter.classList.toggle('active');
+        });
+    }
+    
+    if (closeNotifications) {
+        closeNotifications.addEventListener('click', function() {
+            notificationCenter.classList.remove('active');
+        });
+    }
+    
+    // Cerrar notificaciones al hacer clic fuera
+    window.addEventListener('click', function(e) {
+        if (!notificationCenter.contains(e.target) && !notificationBtn.contains(e.target)) {
+            notificationCenter.classList.remove('active');
+        }
+    });
+}
+
+// Mostrar notificación en el centro de notificaciones
+function showNotificationInCenter(title, message, type = 'info') {
+    if (!notificationList) return;
+    
+    const notificationItem = document.createElement('div');
+    notificationItem.className = `notification-item ${type}`;
+    
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    
+    notificationItem.innerHTML = `
+        <div class="notification-title">${title}</div>
+        <div class="notification-message">${message}</div>
+        <div class="notification-time">${timeString}</div>
+    `;
+    
+    notificationList.insertBefore(notificationItem, notificationList.firstChild);
+    
+    // Actualizar badge
+    updateNotificationBadge();
+    
+    // Auto-eliminar después de 10 segundos
+    setTimeout(() => {
+        if (notificationItem.parentNode) {
+            notificationItem.remove();
+            updateNotificationBadge();
+        }
+    }, 10000);
+}
+
+// Actualizar badge de notificaciones
+function updateNotificationBadge() {
+    if (!notificationBadge || !notificationList) return;
+    
+    const count = notificationList.children.length;
+    if (count > 0) {
+        notificationBadge.textContent = count > 99 ? '99+' : count;
+        notificationBadge.style.display = 'flex';
+    } else {
+        notificationBadge.style.display = 'none';
+    }
+}
+
 // CORRECCIÓN: Configurar input de teléfono para permitir guiones (formato simple)
 function setupPhoneInput() {
-    if (clientPhoneInput) {
-        clientPhoneInput.addEventListener('input', function(e) {
-            let value = e.target.value.replace(/[^\d]/g, ''); // Solo números
+    const phoneInputs = [clientPhoneInput, proveedorPhoneInput];
+    
+    phoneInputs.forEach(input => {
+        if (input) {
+            input.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/[^\d]/g, ''); // Solo números
+                
+                // Formato automático: 412-1234567 (solo un guión)
+                if (value.length > 3 && value.length <= 10) {
+                    value = value.substring(0, 3) + '-' + value.substring(3);
+                }
+                
+                // Limitar a 11 caracteres máximo (3+1+7)
+                if (value.length > 11) {
+                    value = value.substring(0, 11);
+                }
+                
+                e.target.value = value;
+            });
             
-            // Formato automático: 412-1234567 (solo un guión)
-            if (value.length > 3 && value.length <= 10) {
-                value = value.substring(0, 3) + '-' + value.substring(3);
-            }
+            input.addEventListener('keydown', function(e) {
+                // Permitir teclas de control, números y guión
+                if (
+                    e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Tab' || 
+                    e.key === 'ArrowLeft' || e.key === 'ArrowRight' ||
+                    (e.key >= '0' && e.key <= '9') || e.key === '-'
+                ) {
+                    return;
+                }
+                e.preventDefault();
+            });
             
-            // Limitar a 11 caracteres máximo (3+1+7)
-            if (value.length > 11) {
-                value = value.substring(0, 11);
-            }
-            
-            e.target.value = value;
-        });
-        
-        clientPhoneInput.addEventListener('keydown', function(e) {
-            // Permitir teclas de control, números y guión
-            if (
-                e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Tab' || 
-                e.key === 'ArrowLeft' || e.key === 'ArrowRight' ||
-                (e.key >= '0' && e.key <= '9') || e.key === '-'
-            ) {
-                return;
-            }
-            e.preventDefault();
-        });
-        
-        // Establecer placeholder de ejemplo
-        clientPhoneInput.placeholder = '412-1234567';
-    }
+            // Establecer placeholder de ejemplo
+            input.placeholder = '412-1234567';
+        }
+    });
 }
 
 // Configurar cambio de ícono en mensajes
@@ -296,6 +389,15 @@ function setupAuthListeners() {
             const email = document.getElementById('registerEmail').value;
             const password = document.getElementById('registerPassword').value;
             
+            // CORRECCIÓN: Solo tu correo puede tener acceso administrativo
+            let userPlan = 'free';
+            let isAdmin = false;
+            
+            if (email === ADMIN_EMAIL) {
+                userPlan = 'pro';
+                isAdmin = true;
+            }
+            
             auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
                     const user = userCredential.user;
@@ -303,8 +405,9 @@ function setupAuthListeners() {
                     return database.ref('users/' + user.uid).set({
                         email: user.email,
                         nombre: name,
-                        plan: 'free',
+                        plan: userPlan,
                         activo: true,
+                        isAdmin: isAdmin,
                         fechaRegistro: new Date().toISOString()
                     });
                 })
@@ -326,6 +429,7 @@ function setupAuthListeners() {
             authContainer.style.display = 'flex';
             dashboard.style.display = 'none';
             cobranzasSection.style.display = 'none';
+            proveedoresSection.style.display = 'none';
             mensajesSection.style.display = 'none';
             empresaSection.style.display = 'none';
             adminSection.style.display = 'none';
@@ -341,6 +445,7 @@ function setupAuthListeners() {
             registerCard.style.display = 'block';
             dashboard.style.display = 'none';
             cobranzasSection.style.display = 'none';
+            proveedoresSection.style.display = 'none';
             mensajesSection.style.display = 'none';
             empresaSection.style.display = 'none';
             adminSection.style.display = 'none';
@@ -372,14 +477,20 @@ function loadUserData(userId) {
                 updateUserUI();
                 loadCompanyData(userId);
                 loadCobranzas(userId);
+                loadProveedores(userId);
                 loadRecentActivity(userId);
                 
                 // CORRECCIÓN 2: Solo tu correo tiene acceso administrativo
-                if (userData.email === ADMIN_EMAIL) {
+                if (userData.email === ADMIN_EMAIL || userData.isAdmin) {
                     document.querySelectorAll('.admin-only').forEach(el => {
                         el.style.display = 'block';
                     });
                     loadAdminData();
+                }
+                
+                // Mostrar botón de notificaciones
+                if (notificationBtn) {
+                    notificationBtn.style.display = 'flex';
                 }
             }
         })
@@ -420,6 +531,9 @@ function loadCobranzas(userId) {
             loadAbonos(cobranza.id).then(abonos => {
                 cobranza.abonos = abonos || [];
                 cobranza.saldoPendiente = calcularSaldoPendiente(cobranza);
+                
+                // Verificar vencimientos y generar notificaciones
+                checkCobranzaVencimientos(cobranza);
             });
             
             cobranzas.push(cobranza);
@@ -429,6 +543,7 @@ function loadCobranzas(userId) {
         
         updateCobranzasUI();
         updateDashboardStats();
+        updateUpcomingList();
         
         if (userData.plan === 'free' && cobranzas.length >= 3) {
             if (freeLimitAlert) freeLimitAlert.style.display = 'flex';
@@ -436,6 +551,112 @@ function loadCobranzas(userId) {
             if (freeLimitAlert) freeLimitAlert.style.display = 'none';
         }
     });
+}
+
+// Cargar proveedores del usuario
+function loadProveedores(userId) {
+    database.ref('proveedores').orderByChild('userId').equalTo(userId).on('value', (snapshot) => {
+        proveedores = [];
+        snapshot.forEach((childSnapshot) => {
+            const proveedor = childSnapshot.val();
+            proveedor.id = childSnapshot.key;
+            
+            // Cargar pagos para este proveedor
+            loadPagosProveedor(proveedor.id).then(pagos => {
+                proveedor.pagos = pagos || [];
+                proveedor.saldoPendiente = calcularSaldoPendienteProveedor(proveedor);
+                
+                // Verificar vencimientos y generar notificaciones
+                checkProveedorVencimientos(proveedor);
+            });
+            
+            proveedores.push(proveedor);
+        });
+        
+        proveedores.sort((a, b) => new Date(b.fechaEmision) - new Date(a.fechaEmision));
+        
+        updateProveedoresUI();
+        updateDashboardStats();
+        updateUpcomingList();
+    });
+}
+
+// Verificar vencimientos de cobranzas y generar notificaciones
+function checkCobranzaVencimientos(cobranza) {
+    if (cobranza.estado === 'pagado' || (cobranza.saldoPendiente && cobranza.saldoPendiente <= 0)) {
+        return; // No verificar cobranzas ya pagadas
+    }
+    
+    const today = new Date();
+    const dueDate = new Date(cobranza.fechaVencimiento);
+    const diffTime = dueDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    // Notificar si vence en 3 días o está vencida
+    if (diffDays <= 3 && diffDays >= 0) {
+        showNotificationInCenter(
+            'Cobranza próxima a vencer', 
+            `La cobranza de ${cobranza.cliente} por $${cobranza.monto} vence en ${diffDays} día(s)`,
+            diffDays === 0 ? 'danger' : 'warning'
+        );
+    } else if (diffDays < 0) {
+        showNotificationInCenter(
+            'Cobranza vencida', 
+            `La cobranza de ${cobranza.cliente} por $${cobranza.monto} está vencida hace ${Math.abs(diffDays)} día(s)`,
+            'danger'
+        );
+    }
+}
+
+// Verificar vencimientos de proveedores y generar notificaciones
+function checkProveedorVencimientos(proveedor) {
+    if (proveedor.estado === 'pagado' || (proveedor.saldoPendiente && proveedor.saldoPendiente <= 0)) {
+        return; // No verificar proveedores ya pagados
+    }
+    
+    const today = new Date();
+    const dueDate = new Date(proveedor.fechaVencimiento);
+    const diffTime = dueDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    // Notificar si vence en 3 días o está vencido
+    if (diffDays <= 3 && diffDays >= 0) {
+        showNotificationInCenter(
+            'Pago a proveedor próximo a vencer', 
+            `El pago a ${proveedor.nombre} por $${proveedor.monto} vence en ${diffDays} día(s)`,
+            diffDays === 0 ? 'danger' : 'warning'
+        );
+    } else if (diffDays < 0) {
+        showNotificationInCenter(
+            'Pago a proveedor vencido', 
+            `El pago a ${proveedor.nombre} por $${proveedor.monto} está vencido hace ${Math.abs(diffDays)} día(s)`,
+            'danger'
+        );
+    }
+}
+
+// Cargar pagos de proveedores
+function loadPagosProveedor(proveedorId) {
+    return database.ref('pagosProveedores').orderByChild('proveedorId').equalTo(proveedorId).once('value')
+        .then((snapshot) => {
+            const pagos = [];
+            snapshot.forEach((childSnapshot) => {
+                const pago = childSnapshot.val();
+                pago.id = childSnapshot.key;
+                pagos.push(pago);
+            });
+            return pagos;
+        })
+        .catch((error) => {
+            console.error('Error al cargar pagos de proveedores:', error);
+            return [];
+        });
+}
+
+// Calcular saldo pendiente de proveedor
+function calcularSaldoPendienteProveedor(proveedor) {
+    const totalPagado = proveedor.pagos ? proveedor.pagos.reduce((sum, pago) => sum + parseFloat(pago.monto), 0) : 0;
+    return parseFloat(proveedor.monto) - totalPagado;
 }
 
 // CORRECCIÓN: Cargar actividad reciente en tiempo real
@@ -527,6 +748,14 @@ function updateRecentActivityUI(activities) {
                 icon = 'fas fa-check-circle';
                 color = 'var(--success)';
                 break;
+            case 'proveedor':
+                icon = 'fas fa-truck';
+                color = 'var(--secondary)';
+                break;
+            case 'pago_proveedor':
+                icon = 'fas fa-money-bill-wave';
+                color = 'var(--success)';
+                break;
             case 'sistema':
                 icon = 'fas fa-cog';
                 color = 'var(--gray)';
@@ -548,6 +777,107 @@ function updateRecentActivityUI(activities) {
     });
     
     console.log('✅ UI actualizada correctamente');
+}
+
+// Actualizar lista de próximos vencimientos
+function updateUpcomingList() {
+    if (!upcomingList) return;
+    
+    upcomingList.innerHTML = '';
+    
+    const today = new Date();
+    const nextWeek = new Date(today);
+    nextWeek.setDate(today.getDate() + 7);
+    
+    let upcomingItems = [];
+    
+    // Agregar cobranzas próximas a vencer
+    cobranzas.forEach(cobranza => {
+        if (cobranza.estado === 'pagado' || (cobranza.saldoPendiente && cobranza.saldoPendiente <= 0)) {
+            return;
+        }
+        
+        const dueDate = new Date(cobranza.fechaVencimiento);
+        if (dueDate >= today && dueDate <= nextWeek) {
+            const diffTime = dueDate.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            upcomingItems.push({
+                type: 'cobranza',
+                title: `Cobranza: ${cobranza.cliente}`,
+                amount: `$${cobranza.monto}`,
+                days: diffDays,
+                date: dueDate,
+                item: cobranza
+            });
+        }
+    });
+    
+    // Agregar pagos a proveedores próximos a vencer
+    proveedores.forEach(proveedor => {
+        if (proveedor.estado === 'pagado' || (proveedor.saldoPendiente && proveedor.saldoPendiente <= 0)) {
+            return;
+        }
+        
+        const dueDate = new Date(proveedor.fechaVencimiento);
+        if (dueDate >= today && dueDate <= nextWeek) {
+            const diffTime = dueDate.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            upcomingItems.push({
+                type: 'proveedor',
+                title: `Pago: ${proveedor.nombre}`,
+                amount: `$${proveedor.monto}`,
+                days: diffDays,
+                date: dueDate,
+                item: proveedor
+            });
+        }
+    });
+    
+    // Ordenar por fecha más próxima
+    upcomingItems.sort((a, b) => a.date - b.date);
+    
+    if (upcomingItems.length === 0) {
+        upcomingList.innerHTML = `
+            <div class="upcoming-item">
+                <div class="upcoming-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="upcoming-content">
+                    <div class="upcoming-title">Sin vencimientos próximos</div>
+                    <div class="upcoming-time">No hay cobranzas o pagos que venzan en los próximos 7 días</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    upcomingItems.slice(0, 5).forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'upcoming-item';
+        
+        let icon = 'fas fa-file-invoice-dollar';
+        let color = 'var(--warning)';
+        
+        if (item.type === 'proveedor') {
+            icon = 'fas fa-truck';
+            color = 'var(--secondary)';
+        }
+        
+        div.innerHTML = `
+            <div class="upcoming-icon" style="background-color: ${color}20; color: ${color};">
+                <i class="${icon}"></i>
+            </div>
+            <div class="upcoming-content">
+                <div class="upcoming-title">${item.title}</div>
+                <div class="upcoming-time">Vence en ${item.days} día(s) - ${formatDate(item.date)}</div>
+            </div>
+            <div class="upcoming-amount">${item.amount}</div>
+        `;
+        
+        upcomingList.appendChild(div);
+    });
 }
 
 // Registrar actividad
@@ -758,6 +1088,139 @@ function updateCobranzasUI() {
     });
 }
 
+// Actualizar UI de proveedores
+function updateProveedoresUI() {
+    if (!proveedoresTableBody) return;
+    
+    proveedoresTableBody.innerHTML = '';
+    
+    if (proveedores.length === 0) {
+        proveedoresTableBody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 30px;">
+                    <i class="fas fa-truck" style="font-size: 2rem; color: var(--gray); margin-bottom: 10px; display: block;"></i>
+                    <p>No hay proveedores registrados</p>
+                    <button class="btn btn-primary" id="addFirstProveedor" style="margin-top: 15px;">
+                        <i class="fas fa-plus"></i> Agregar Primer Proveedor
+                    </button>
+                </td>
+            </tr>
+        `;
+        
+        const addFirstBtn = document.getElementById('addFirstProveedor');
+        if (addFirstBtn) {
+            addFirstBtn.addEventListener('click', function() {
+                openProveedorModal();
+            });
+        }
+        
+        return;
+    }
+    
+    let filteredProveedores = proveedores;
+    if (currentTabProv === 'pending-prov') {
+        filteredProveedores = proveedores.filter(p => p.estado === 'pendiente' && p.saldoPendiente > 0);
+    } else if (currentTabProv === 'paid-prov') {
+        filteredProveedores = proveedores.filter(p => p.estado === 'pagado' || p.saldoPendiente <= 0);
+    } else if (currentTabProv === 'overdue-prov') {
+        filteredProveedores = proveedores.filter(p => {
+            const today = new Date();
+            const dueDate = new Date(p.fechaVencimiento);
+            return (p.estado !== 'pagado' && p.saldoPendiente > 0) && dueDate < today;
+        });
+    }
+    
+    if (filteredProveedores.length === 0) {
+        proveedoresTableBody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 30px;">
+                    <i class="fas fa-truck" style="font-size: 2rem; color: var(--gray); margin-bottom: 10px; display: block;"></i>
+                    <p>No hay proveedores en esta categoría</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    filteredProveedores.forEach(proveedor => {
+        const tr = document.createElement('tr');
+        
+        let estado = 'pendiente';
+        let estadoClass = 'status-pending';
+        let estadoText = 'Pendiente';
+        
+        const today = new Date();
+        const dueDate = new Date(proveedor.fechaVencimiento);
+        const saldoPendiente = proveedor.saldoPendiente || calcularSaldoPendienteProveedor(proveedor);
+        
+        if (proveedor.estado === 'pagado' || saldoPendiente <= 0) {
+            estado = 'pagado';
+            estadoClass = 'status-paid';
+            estadoText = 'Pagado';
+        } else if (dueDate < today) {
+            estado = 'vencido';
+            estadoClass = 'status-overdue';
+            estadoText = 'Vencido';
+        }
+        
+        tr.innerHTML = `
+            <td>
+                <strong>${proveedor.nombre}</strong>
+                ${proveedor.contacto ? `<br><small>${proveedor.contacto}</small>` : ''}
+            </td>
+            <td>${proveedor.concepto}</td>
+            <td>
+                $${proveedor.monto}
+                ${saldoPendiente < parseFloat(proveedor.monto) ? 
+                  `<br><small>Saldo: $${saldoPendiente.toFixed(2)}</small>` : ''}
+            </td>
+            <td>${formatDate(proveedor.fechaEmision)}</td>
+            <td>${formatDate(proveedor.fechaVencimiento)}</td>
+            <td><span class="status-badge ${estadoClass}">${estadoText}</span></td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-icon" title="Registrar pago" data-id="${proveedor.id}">
+                        <i class="fas fa-money-bill-wave" style="color: var(--success);"></i>
+                    </button>
+                    <button class="btn-icon" title="Ver pagos" data-id="${proveedor.id}">
+                        <i class="fas fa-list" style="color: var(--primary);"></i>
+                    </button>
+                    <button class="btn-icon" title="Marcar como pagado" data-id="${proveedor.id}">
+                        <i class="fas fa-check" style="color: var(--success);"></i>
+                    </button>
+                    <button class="btn-icon" title="Editar" data-id="${proveedor.id}">
+                        <i class="fas fa-edit" style="color: var(--warning);"></i>
+                    </button>
+                    <button class="btn-icon" title="Eliminar" data-id="${proveedor.id}">
+                        <i class="fas fa-trash" style="color: var(--danger);"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+        
+        proveedoresTableBody.appendChild(tr);
+    });
+    
+    document.querySelectorAll('#proveedoresTableBody .action-buttons .btn-icon').forEach(button => {
+        button.addEventListener('click', function() {
+            const proveedorId = this.getAttribute('data-id');
+            const action = this.querySelector('i').className;
+            
+            if (action.includes('fa-money-bill-wave')) {
+                openPagoProveedorModal(proveedorId);
+            } else if (action.includes('fa-list')) {
+                verPagosProveedor(proveedorId);
+            } else if (action.includes('fa-check')) {
+                markProveedorAsPaid(proveedorId);
+            } else if (action.includes('fa-trash')) {
+                deleteProveedor(proveedorId);
+            } else if (action.includes('fa-edit')) {
+                editProveedor(proveedorId);
+            }
+        });
+    });
+}
+
 // Abrir modal para registrar abono
 function openAbonoModal(cobranzaId) {
     const cobranza = cobranzas.find(c => c.id === cobranzaId);
@@ -781,6 +1244,31 @@ function openAbonoModal(cobranzaId) {
     document.getElementById('saldoDespues').textContent = saldoPendiente.toFixed(2);
     
     abonoModal.classList.add('active');
+}
+
+// Abrir modal para registrar pago a proveedor
+function openPagoProveedorModal(proveedorId) {
+    const proveedor = proveedores.find(p => p.id === proveedorId);
+    if (!proveedor) return;
+    
+    document.getElementById('pagoProveedorId').value = proveedorId;
+    document.getElementById('deudaTotalProv').textContent = proveedor.monto;
+    
+    const saldoPendiente = proveedor.saldoPendiente || calcularSaldoPendienteProveedor(proveedor);
+    document.getElementById('pagoMonto').setAttribute('max', saldoPendiente);
+    document.getElementById('pagoMonto').value = '';
+    document.getElementById('pagoFecha').valueAsDate = new Date();
+    document.getElementById('pagoNotas').value = '';
+    
+    document.getElementById('pagoMonto').addEventListener('input', function() {
+        const montoPago = parseFloat(this.value) || 0;
+        const nuevoSaldo = saldoPendiente - montoPago;
+        document.getElementById('saldoDespuesProv').textContent = nuevoSaldo.toFixed(2);
+    });
+    
+    document.getElementById('saldoDespuesProv').textContent = saldoPendiente.toFixed(2);
+    
+    pagoProveedorModal.classList.add('active');
 }
 
 // Ver abonos de una cobranza
@@ -853,8 +1341,79 @@ function verAbonos(cobranzaId) {
     });
 }
 
+// Ver pagos de un proveedor
+function verPagosProveedor(proveedorId) {
+    const proveedor = proveedores.find(p => p.id === proveedorId);
+    if (!proveedor) return;
+    
+    let pagosHTML = '';
+    if (proveedor.pagos && proveedor.pagos.length > 0) {
+        proveedor.pagos.forEach(pago => {
+            pagosHTML += `
+                <div class="abono-item">
+                    <div class="abono-info">
+                        <strong>$${pago.monto}</strong>
+                        <div class="abono-fecha">${formatDate(pago.fecha)}</div>
+                        ${pago.notas ? `<small>${pago.notas}</small>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+    } else {
+        pagosHTML = '<p>No hay pagos registrados</p>';
+    }
+    
+    const saldoPendiente = proveedor.saldoPendiente || calcularSaldoPendienteProveedor(proveedor);
+    
+    const modalHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Pagos - ${proveedor.nombre}</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div>
+                <p><strong>Deuda total:</strong> $${proveedor.monto}</p>
+                <p><strong>Total pagado:</strong> $${(parseFloat(proveedor.monto) - saldoPendiente).toFixed(2)}</p>
+                <p><strong>Saldo pendiente:</strong> $${saldoPendiente.toFixed(2)}</p>
+                
+                <div class="abonos-section">
+                    <h4>Historial de Pagos</h4>
+                    ${pagosHTML}
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-primary" id="addPagoFromList" data-id="${proveedorId}">
+                        <i class="fas fa-plus"></i> Agregar Pago
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = modalHTML;
+    document.body.appendChild(modal);
+    
+    modal.querySelector('.close-modal').addEventListener('click', function() {
+        modal.remove();
+    });
+    
+    modal.querySelector('#addPagoFromList').addEventListener('click', function() {
+        modal.remove();
+        openPagoProveedorModal(proveedorId);
+    });
+    
+    window.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
 // Actualizar estadísticas del dashboard
 function updateDashboardStats() {
+    // Estadísticas de cobranzas
     const pending = cobranzas.filter(c => {
         const saldoPendiente = c.saldoPendiente || calcularSaldoPendiente(c);
         return c.estado !== 'pagado' && saldoPendiente > 0;
@@ -879,10 +1438,22 @@ function updateDashboardStats() {
         })
         .reduce((sum, c) => sum + (c.saldoPendiente || calcularSaldoPendiente(c)), 0);
     
+    // Estadísticas de proveedores
+    const proveedoresCount = proveedores.length;
+    
+    const totalPagos = proveedores
+        .filter(p => {
+            const saldoPendiente = p.saldoPendiente || calcularSaldoPendienteProveedor(p);
+            return p.estado !== 'pagado' && saldoPendiente > 0;
+        })
+        .reduce((sum, p) => sum + (p.saldoPendiente || calcularSaldoPendienteProveedor(p)), 0);
+    
     document.getElementById('pendingCount').textContent = pending;
     document.getElementById('paidCount').textContent = paid;
     document.getElementById('overdueCount').textContent = overdue;
+    document.getElementById('proveedoresCount').textContent = proveedoresCount;
     document.getElementById('totalAmount').textContent = `$${totalAmount.toFixed(2)}`;
+    document.getElementById('totalPagos').textContent = `$${totalPagos.toFixed(2)}`;
     
     updateStatusChart(pending, paid, overdue);
 }
@@ -949,6 +1520,7 @@ function showAuth() {
     registerCard.style.display = 'none';
     dashboard.style.display = 'none';
     cobranzasSection.style.display = 'none';
+    proveedoresSection.style.display = 'none';
     mensajesSection.style.display = 'none';
     empresaSection.style.display = 'none';
     adminSection.style.display = 'none';
@@ -974,6 +1546,7 @@ function setupNavigation() {
             
             dashboard.style.display = 'none';
             cobranzasSection.style.display = 'none';
+            proveedoresSection.style.display = 'none';
             mensajesSection.style.display = 'none';
             empresaSection.style.display = 'none';
             adminSection.style.display = 'none';
@@ -996,6 +1569,12 @@ function setupModals() {
     if (addCobranzaBtn2) {
         addCobranzaBtn2.addEventListener('click', openCobranzaModal);
     }
+    if (addProveedorBtn) {
+        addProveedorBtn.addEventListener('click', openProveedorModal);
+    }
+    if (addProveedorBtn2) {
+        addProveedorBtn2.addEventListener('click', openProveedorModal);
+    }
     if (addMessageBtn) {
         addMessageBtn.addEventListener('click', openMessageModal);
     }
@@ -1003,7 +1582,9 @@ function setupModals() {
     closeModals.forEach(btn => {
         btn.addEventListener('click', function() {
             cobranzaModal.classList.remove('active');
+            proveedorModal.classList.remove('active');
             abonoModal.classList.remove('active');
+            pagoProveedorModal.classList.remove('active');
             messageModal.classList.remove('active');
             reciboModal.classList.remove('active');
         });
@@ -1011,7 +1592,9 @@ function setupModals() {
     
     window.addEventListener('click', function(e) {
         if (e.target === cobranzaModal) cobranzaModal.classList.remove('active');
+        if (e.target === proveedorModal) proveedorModal.classList.remove('active');
         if (e.target === abonoModal) abonoModal.classList.remove('active');
+        if (e.target === pagoProveedorModal) pagoProveedorModal.classList.remove('active');
         if (e.target === messageModal) messageModal.classList.remove('active');
         if (e.target === reciboModal) reciboModal.classList.remove('active');
     });
@@ -1150,6 +1733,61 @@ function setupForms() {
         });
     }
     
+    // Formulario de proveedor
+    if (proveedorForm) {
+        proveedorForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            let telefono = document.getElementById('proveedorPhone').value;
+            let telefonoLimpio = telefono.replace(/-/g, '');
+            if (telefonoLimpio && !telefonoLimpio.startsWith('+58')) {
+                telefonoLimpio = '+58' + telefonoLimpio;
+            }
+            
+            const proveedorData = {
+                userId: currentUser.uid,
+                nombre: document.getElementById('proveedorName').value,
+                contacto: document.getElementById('proveedorContact').value,
+                telefono: telefonoLimpio,
+                email: document.getElementById('proveedorEmail').value,
+                concepto: document.getElementById('proveedorConcepto').value,
+                monto: parseFloat(document.getElementById('proveedorMonto').value),
+                fechaEmision: document.getElementById('proveedorIssueDate').value,
+                fechaVencimiento: document.getElementById('proveedorDueDate').value,
+                estado: 'pendiente',
+                notas: document.getElementById('proveedorNotes').value,
+                fechaCreacion: new Date().toISOString(),
+                saldoPendiente: parseFloat(document.getElementById('proveedorMonto').value)
+            };
+            
+            if (proveedorIdInput.value) {
+                database.ref('proveedores/' + proveedorIdInput.value).update(proveedorData)
+                    .then(() => {
+                        showNotification('Proveedor actualizado correctamente', 'success');
+                        proveedorForm.reset();
+                        proveedorModal.classList.remove('active');
+                        proveedorIdInput.value = '';
+                        proveedorModalTitle.textContent = 'Nuevo Proveedor';
+                        registrarActividad('proveedor', `Proveedor actualizado - ${proveedorData.nombre}`, `Monto: $${proveedorData.monto}`);
+                    })
+                    .catch((error) => {
+                        showNotification('Error al actualizar proveedor: ' + error.message, 'danger');
+                    });
+            } else {
+                database.ref('proveedores').push(proveedorData)
+                    .then(() => {
+                        showNotification('Proveedor agregado correctamente', 'success');
+                        proveedorForm.reset();
+                        proveedorModal.classList.remove('active');
+                        registrarActividad('proveedor', `Nuevo proveedor creado - ${proveedorData.nombre}`, `Monto: $${proveedorData.monto}, Vence: ${formatDate(proveedorData.fechaVencimiento)}`);
+                    })
+                    .catch((error) => {
+                        showNotification('Error al agregar proveedor: ' + error.message, 'danger');
+                    });
+            }
+        });
+    }
+    
     // Formulario de abono
     if (abonoForm) {
         abonoForm.addEventListener('submit', function(e) {
@@ -1199,6 +1837,59 @@ function setupForms() {
                 })
                 .catch((error) => {
                     showNotification('Error al registrar abono: ' + error.message, 'danger');
+                });
+        });
+    }
+    
+    // Formulario de pago a proveedor
+    if (pagoProveedorForm) {
+        pagoProveedorForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const proveedorId = document.getElementById('pagoProveedorId').value;
+            const proveedor = proveedores.find(p => p.id === proveedorId);
+            
+            if (!proveedor) {
+                showNotification('Proveedor no encontrado', 'danger');
+                return;
+            }
+            
+            const pagoData = {
+                proveedorId: proveedorId,
+                userId: currentUser.uid,
+                monto: parseFloat(document.getElementById('pagoMonto').value),
+                fecha: document.getElementById('pagoFecha').value,
+                notas: document.getElementById('pagoNotas').value,
+                fechaRegistro: new Date().toISOString()
+            };
+            
+            database.ref('pagosProveedores').push(pagoData)
+                .then(() => {
+                    // Actualizar saldo pendiente en el proveedor
+                    const nuevoSaldo = calcularSaldoPendienteProveedor(proveedor) - pagoData.monto;
+                    database.ref('proveedores/' + proveedorId).update({
+                        saldoPendiente: nuevoSaldo
+                    })
+                    .then(() => {
+                        showNotification('Pago registrado correctamente', 'success');
+                        pagoProveedorForm.reset();
+                        pagoProveedorModal.classList.remove('active');
+                        
+                        // Registrar actividad
+                        registrarActividad('pago_proveedor', `Pago registrado - ${proveedor.nombre}`, `Monto: $${pagoData.monto}, Nuevo saldo: $${nuevoSaldo.toFixed(2)}`);
+                        
+                        // Si el saldo llega a cero, marcar como pagado
+                        if (nuevoSaldo <= 0) {
+                            database.ref('proveedores/' + proveedorId).update({
+                                estado: 'pagado'
+                            }).then(() => {
+                                registrarActividad('pago', `Proveedor pagado completamente - ${proveedor.nombre}`);
+                            });
+                        }
+                    });
+                })
+                .catch((error) => {
+                    showNotification('Error al registrar pago: ' + error.message, 'danger');
                 });
         });
     }
@@ -1300,10 +1991,29 @@ function setupForms() {
 function setupTabs() {
     tabs.forEach(tab => {
         tab.addEventListener('click', function() {
-            tabs.forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            currentTab = this.getAttribute('data-tab');
-            updateCobranzasUI();
+            const tabType = this.getAttribute('data-tab');
+            
+            if (tabType.includes('prov')) {
+                // Tabs de proveedores
+                tabs.forEach(t => {
+                    if (t.getAttribute('data-tab').includes('prov')) {
+                        t.classList.remove('active');
+                    }
+                });
+                this.classList.add('active');
+                currentTabProv = tabType;
+                updateProveedoresUI();
+            } else {
+                // Tabs de cobranzas
+                tabs.forEach(t => {
+                    if (!t.getAttribute('data-tab').includes('prov')) {
+                        t.classList.remove('active');
+                    }
+                });
+                this.classList.add('active');
+                currentTab = tabType;
+                updateCobranzasUI();
+            }
         });
     });
 }
@@ -1323,6 +2033,22 @@ function openCobranzaModal() {
     cobranzaSubmitBtn.disabled = false;
     
     cobranzaModal.classList.add('active');
+}
+
+// Abrir modal de proveedor
+function openProveedorModal() {
+    document.getElementById('proveedorIssueDate').valueAsDate = new Date();
+    
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 30);
+    document.getElementById('proveedorDueDate').valueAsDate = dueDate;
+    
+    proveedorForm.reset();
+    proveedorIdInput.value = '';
+    proveedorModalTitle.textContent = 'Nuevo Proveedor';
+    proveedorSubmitBtn.textContent = 'Guardar Proveedor';
+    
+    proveedorModal.classList.add('active');
 }
 
 // Editar cobranza
@@ -1355,6 +2081,39 @@ function editCobranza(cobranzaId) {
     cobranzaSubmitBtn.textContent = 'Actualizar Cobranza';
     
     cobranzaModal.classList.add('active');
+}
+
+// Editar proveedor
+function editProveedor(proveedorId) {
+    const proveedor = proveedores.find(p => p.id === proveedorId);
+    if (!proveedor) return;
+    
+    document.getElementById('proveedorName').value = proveedor.nombre;
+    document.getElementById('proveedorContact').value = proveedor.contacto || '';
+    
+    // Formatear teléfono
+    let telefono = proveedor.telefono || '';
+    if (telefono.startsWith('+58')) {
+        telefono = telefono.substring(3);
+    }
+    telefono = telefono.replace(/\D/g, '');
+    if (telefono.length > 3) {
+        telefono = telefono.substring(0, 3) + '-' + telefono.substring(3);
+    }
+    document.getElementById('proveedorPhone').value = telefono;
+    
+    document.getElementById('proveedorEmail').value = proveedor.email || '';
+    document.getElementById('proveedorConcepto').value = proveedor.concepto;
+    document.getElementById('proveedorMonto').value = proveedor.monto;
+    document.getElementById('proveedorIssueDate').value = proveedor.fechaEmision;
+    document.getElementById('proveedorDueDate').value = proveedor.fechaVencimiento;
+    document.getElementById('proveedorNotes').value = proveedor.notas || '';
+    
+    proveedorIdInput.value = proveedorId;
+    proveedorModalTitle.textContent = 'Editar Proveedor';
+    proveedorSubmitBtn.textContent = 'Actualizar Proveedor';
+    
+    proveedorModal.classList.add('active');
 }
 
 // Abrir modal de mensaje
@@ -1557,6 +2316,24 @@ function markAsPaid(cobranzaId) {
     }
 }
 
+// Marcar proveedor como pagado
+function markProveedorAsPaid(proveedorId) {
+    if (confirm('¿Estás seguro de que quieres marcar este proveedor como pagado?')) {
+        const proveedor = proveedores.find(p => p.id === proveedorId);
+        database.ref('proveedores/' + proveedorId).update({
+            estado: 'pagado',
+            saldoPendiente: 0
+        })
+        .then(() => {
+            showNotification('Proveedor marcado como pagado', 'success');
+            registrarActividad('pago', `Proveedor marcado como pagado - ${proveedor.nombre}`, `Monto: $${proveedor.monto}`);
+        })
+        .catch((error) => {
+            showNotification('Error al actualizar proveedor: ' + error.message, 'danger');
+        });
+    }
+}
+
 // Eliminar cobranza
 function deleteCobranza(cobranzaId) {
     if (confirm('¿Estás seguro de que quieres eliminar esta cobranza?')) {
@@ -1580,6 +2357,33 @@ function deleteCobranza(cobranzaId) {
             })
             .catch((error) => {
                 showNotification('Error al eliminar cobranza: ' + error.message, 'danger');
+            });
+    }
+}
+
+// Eliminar proveedor
+function deleteProveedor(proveedorId) {
+    if (confirm('¿Estás seguro de que quieres eliminar este proveedor?')) {
+        const proveedor = proveedores.find(p => p.id === proveedorId);
+        // Primero eliminar todos los pagos asociados
+        database.ref('pagosProveedores').orderByChild('proveedorId').equalTo(proveedorId).once('value')
+            .then((snapshot) => {
+                const promises = [];
+                snapshot.forEach((childSnapshot) => {
+                    promises.push(database.ref('pagosProveedores/' + childSnapshot.key).remove());
+                });
+                return Promise.all(promises);
+            })
+            .then(() => {
+                // Luego eliminar el proveedor
+                return database.ref('proveedores/' + proveedorId).remove();
+            })
+            .then(() => {
+                showNotification('Proveedor eliminado', 'success');
+                registrarActividad('sistema', `Proveedor eliminado - ${proveedor.nombre}`, `Monto: $${proveedor.monto}`);
+            })
+            .catch((error) => {
+                showNotification('Error al eliminar proveedor: ' + error.message, 'danger');
             });
     }
 }
@@ -1647,6 +2451,9 @@ function updateAdminUI(users) {
                     <button class="btn-icon toggle-plan" data-id="${user.id}" data-plan="${user.plan}" title="${user.plan === 'free' ? 'Hacer Pro' : 'Hacer Free'}">
                         <i class="fas ${user.plan === 'free' ? 'fa-crown' : 'fa-user'}" style="color: ${user.plan === 'free' ? 'var(--secondary)' : 'var(--gray)'};"></i>
                     </button>
+                    <button class="btn-icon delete-user" data-id="${user.id}" data-name="${user.nombre}" title="Eliminar usuario">
+                        <i class="fas fa-trash" style="color: var(--danger);"></i>
+                    </button>
                 </div>
             </td>
         `;
@@ -1696,9 +2503,115 @@ function updateAdminUI(users) {
             });
         });
     });
+    
+    // NUEVA FUNCIONALIDAD: Eliminar usuarios
+    document.querySelectorAll('.delete-user').forEach(button => {
+        button.addEventListener('click', function() {
+            const userId = this.getAttribute('data-id');
+            const userName = this.getAttribute('data-name');
+            
+            if (confirm(`¿Estás seguro de que quieres eliminar al usuario "${userName}"? Esta acción no se puede deshacer.`)) {
+                // Primero eliminar todos los datos del usuario
+                const deletePromises = [];
+                
+                // Eliminar cobranzas del usuario
+                deletePromises.push(
+                    database.ref('cobranzas').orderByChild('userId').equalTo(userId).once('value')
+                        .then(snapshot => {
+                            const promises = [];
+                            snapshot.forEach(child => {
+                                promises.push(database.ref('cobranzas/' + child.key).remove());
+                            });
+                            return Promise.all(promises);
+                        })
+                );
+                
+                // Eliminar abonos del usuario
+                deletePromises.push(
+                    database.ref('abonos').orderByChild('userId').equalTo(userId).once('value')
+                        .then(snapshot => {
+                            const promises = [];
+                            snapshot.forEach(child => {
+                                promises.push(database.ref('abonos/' + child.key).remove());
+                            });
+                            return Promise.all(promises);
+                        })
+                );
+                
+                // Eliminar proveedores del usuario
+                deletePromises.push(
+                    database.ref('proveedores').orderByChild('userId').equalTo(userId).once('value')
+                        .then(snapshot => {
+                            const promises = [];
+                            snapshot.forEach(child => {
+                                promises.push(database.ref('proveedores/' + child.key).remove());
+                            });
+                            return Promise.all(promises);
+                        })
+                );
+                
+                // Eliminar pagos a proveedores del usuario
+                deletePromises.push(
+                    database.ref('pagosProveedores').orderByChild('userId').equalTo(userId).once('value')
+                        .then(snapshot => {
+                            const promises = [];
+                            snapshot.forEach(child => {
+                                promises.push(database.ref('pagosProveedores/' + child.key).remove());
+                            });
+                            return Promise.all(promises);
+                        })
+                );
+                
+                // Eliminar mensajes del usuario
+                deletePromises.push(
+                    database.ref('mensajes').orderByChild('userId').equalTo(userId).once('value')
+                        .then(snapshot => {
+                            const promises = [];
+                            snapshot.forEach(child => {
+                                promises.push(database.ref('mensajes/' + child.key).remove());
+                            });
+                            return Promise.all(promises);
+                        })
+                );
+                
+                // Eliminar actividades del usuario
+                deletePromises.push(
+                    database.ref('actividades').orderByChild('userId').equalTo(userId).once('value')
+                        .then(snapshot => {
+                            const promises = [];
+                            snapshot.forEach(child => {
+                                promises.push(database.ref('actividades/' + child.key).remove());
+                            });
+                            return Promise.all(promises);
+                        })
+                );
+                
+                // Eliminar datos de empresa del usuario
+                deletePromises.push(
+                    database.ref('empresas/' + userId).remove()
+                );
+                
+                // Eliminar el usuario de la base de datos
+                deletePromises.push(
+                    database.ref('users/' + userId).remove()
+                );
+                
+                // Ejecutar todas las eliminaciones
+                Promise.all(deletePromises)
+                    .then(() => {
+                        showNotification(`Usuario "${userName}" eliminado correctamente`, 'success');
+                        loadAdminData();
+                    })
+                    .catch((error) => {
+                        console.error('Error al eliminar usuario:', error);
+                        showNotification('Error al eliminar usuario: ' + error.message, 'danger');
+                    });
+            }
+        });
+    });
 }
 
-// Exportar a Excel
+// Exportar a Excel - Cobranzas
 if (exportExcelBtn) {
     exportExcelBtn.addEventListener('click', function() {
         const data = cobranzas.map(cobranza => {
@@ -1723,8 +2636,35 @@ if (exportExcelBtn) {
     });
 }
 
+// Exportar a Excel - Proveedores
+if (exportProveedoresBtn) {
+    exportProveedoresBtn.addEventListener('click', function() {
+        const data = proveedores.map(proveedor => {
+            const saldoPendiente = proveedor.saldoPendiente || calcularSaldoPendienteProveedor(proveedor);
+            return {
+                'Proveedor': proveedor.nombre,
+                'Contacto': proveedor.contacto || '',
+                'Concepto': proveedor.concepto,
+                'Monto Total': proveedor.monto,
+                'Saldo Pendiente': saldoPendiente,
+                'Pagos': proveedor.pagos ? proveedor.pagos.length : 0,
+                'Estado': proveedor.estado,
+                'Fecha Emisión': formatDate(proveedor.fechaEmision),
+                'Fecha Vencimiento': formatDate(proveedor.fechaVencimiento),
+                'Notas': proveedor.notas || ''
+            };
+        });
+        
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, 'Proveedores');
+        XLSX.writeFile(wb, 'proveedores.xlsx');
+    });
+}
+
 // Formatear fecha
 function formatDate(dateString) {
+    if (!dateString) return '';
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString('es-ES', options);
 }
