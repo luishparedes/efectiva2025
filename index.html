@@ -24,6 +24,17 @@
         <span>Texto copiado al portapapeles</span>
     </div>
 
+    <!-- Notification Center -->
+    <div id="notificationCenter" class="notification-center">
+        <div class="notification-header">
+            <h3>Notificaciones</h3>
+            <button id="closeNotifications" class="btn-icon"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="notification-list" id="notificationList">
+            <!-- Las notificaciones se cargarán aquí dinámicamente -->
+        </div>
+    </div>
+
     <!-- Header -->
     <header>
         <div class="container">
@@ -36,6 +47,7 @@
                     <ul>
                         <li><a href="#" class="nav-link active" data-target="dashboard">Dashboard</a></li>
                         <li><a href="#" class="nav-link" data-target="cobranzas">Cobranzas</a></li>
+                        <li><a href="#" class="nav-link" data-target="proveedores">Proveedores</a></li>
                         <li><a href="#" class="nav-link" data-target="mensajes">Mensajes</a></li>
                         <li><a href="#" class="nav-link" data-target="empresa">Empresa</a></li>
                         <li><a href="#" class="nav-link admin-only" data-target="admin" style="display: none;">Admin</a></li>
@@ -47,6 +59,10 @@
                         <span id="userName">Usuario</span>
                         <span id="userPlanBadge" class="plan-badge plan-free" style="display: none;">Free</span>
                     </div>
+                    <button class="btn btn-icon" id="notificationBtn" title="Notificaciones" style="display: none;">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                    </button>
                     <button class="btn btn-outline" id="loginBtn">Iniciar Sesión</button>
                     <button class="btn btn-primary" id="registerBtn">Registrarse</button>
                     <button class="btn btn-outline" id="logoutBtn" style="display: none;">Cerrar Sesión</button>
@@ -103,9 +119,14 @@
         <div class="dashboard" id="dashboard" style="display: none;">
             <div class="dashboard-header">
                 <h1 class="dashboard-title">Dashboard</h1>
-                <button class="btn btn-primary" id="addCobranzaBtn">
-                    <i class="fas fa-plus"></i> Nueva Cobranza
-                </button>
+                <div>
+                    <button class="btn btn-primary" id="addCobranzaBtn">
+                        <i class="fas fa-plus"></i> Nueva Cobranza
+                    </button>
+                    <button class="btn btn-outline" id="addProveedorBtn">
+                        <i class="fas fa-plus"></i> Nuevo Proveedor
+                    </button>
+                </div>
             </div>
 
             <div class="alert alert-warning" id="freeLimitAlert" style="display: none;">
@@ -117,22 +138,32 @@
                 <div class="stat-card">
                     <i class="fas fa-clock"></i>
                     <div class="stat-value" id="pendingCount">0</div>
-                    <div class="stat-label">Pendientes</div>
+                    <div class="stat-label">Cobranzas Pendientes</div>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-check-circle"></i>
                     <div class="stat-value" id="paidCount">0</div>
-                    <div class="stat-label">Pagadas</div>
+                    <div class="stat-label">Cobranzas Pagadas</div>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-exclamation-triangle"></i>
                     <div class="stat-value" id="overdueCount">0</div>
-                    <div class="stat-label">Vencidas</div>
+                    <div class="stat-label">Cobranzas Vencidas</div>
                 </div>
                 <div class="stat-card">
-                    <i class="fas fa-chart-line"></i>
+                    <i class="fas fa-truck"></i>
+                    <div class="stat-value" id="proveedoresCount">0</div>
+                    <div class="stat-label">Proveedores Activos</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-file-invoice-dollar"></i>
                     <div class="stat-value" id="totalAmount">$0</div>
                     <div class="stat-label">Total por Cobrar</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <div class="stat-value" id="totalPagos">$0</div>
+                    <div class="stat-label">Total por Pagar</div>
                 </div>
             </div>
 
@@ -141,6 +172,12 @@
                     <h3>Estado de Cobranzas</h3>
                     <div class="chart-container">
                         <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>Próximos Vencimientos</h3>
+                    <div class="upcoming-list" id="upcomingList">
+                        <!-- Los vencimientos próximos se cargarán aquí -->
                     </div>
                 </div>
                 <div class="chart-card">
@@ -189,6 +226,47 @@
                     </thead>
                     <tbody id="cobranzasTableBody">
                         <!-- Las cobranzas se cargarán aquí dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Proveedores -->
+        <div class="dashboard" id="proveedores" style="display: none;">
+            <div class="dashboard-header">
+                <h1 class="dashboard-title">Proveedores</h1>
+                <div>
+                    <button class="btn btn-outline" id="exportProveedoresBtn">
+                        <i class="fas fa-file-excel"></i> Exportar Excel
+                    </button>
+                    <button class="btn btn-primary" id="addProveedorBtn2">
+                        <i class="fas fa-plus"></i> Nuevo Proveedor
+                    </button>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" data-tab="all-prov">Todos</div>
+                <div class="tab" data-tab="pending-prov">Pendientes</div>
+                <div class="tab" data-tab="paid-prov">Pagados</div>
+                <div class="tab" data-tab="overdue-prov">Vencidos</div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Proveedor</th>
+                            <th>Concepto</th>
+                            <th>Monto</th>
+                            <th>Fecha Emisión</th>
+                            <th>Fecha Vencimiento</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="proveedoresTableBody">
+                        <!-- Los proveedores se cargarán aquí dinámicamente -->
                     </tbody>
                 </table>
             </div>
@@ -367,6 +445,59 @@
         </div>
     </div>
 
+    <!-- Modal para Nuevo Proveedor -->
+    <div class="modal" id="proveedorModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="proveedorModalTitle">Nuevo Proveedor</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <form id="proveedorForm">
+                <input type="hidden" id="proveedorId">
+                <div class="form-group">
+                    <label for="proveedorName">Nombre del Proveedor</label>
+                    <input type="text" id="proveedorName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="proveedorContact">Persona de Contacto</label>
+                    <input type="text" id="proveedorContact" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="proveedorPhone">Teléfono</label>
+                    <div class="phone-input-container">
+                        <span class="country-code">+58</span>
+                        <input type="tel" id="proveedorPhone" class="form-control phone-input" placeholder="412-1234567" pattern="[0-9]{3}-[0-9]{7}">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="proveedorEmail">Email</label>
+                    <input type="email" id="proveedorEmail" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="proveedorConcepto">Concepto del Pago</label>
+                    <input type="text" id="proveedorConcepto" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="proveedorMonto">Monto a Pagar</label>
+                    <input type="number" id="proveedorMonto" class="form-control" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="proveedorIssueDate">Fecha de Emisión</label>
+                    <input type="date" id="proveedorIssueDate" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="proveedorDueDate">Fecha de Vencimiento</label>
+                    <input type="date" id="proveedorDueDate" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="proveedorNotes">Notas</label>
+                    <textarea id="proveedorNotes" class="form-control" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;" id="proveedorSubmitBtn">Guardar Proveedor</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Modal para Abonos -->
     <div class="modal" id="abonoModal">
         <div class="modal-content">
@@ -393,6 +524,36 @@
                     <p><strong>Saldo después del abono:</strong> $<span id="saldoDespues">0</span></p>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Registrar Abono</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Pagos a Proveedores -->
+    <div class="modal" id="pagoProveedorModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Registrar Pago a Proveedor</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <form id="pagoProveedorForm">
+                <input type="hidden" id="pagoProveedorId">
+                <div class="form-group">
+                    <label for="pagoMonto">Monto del Pago</label>
+                    <input type="number" id="pagoMonto" class="form-control" step="0.01" min="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="pagoFecha">Fecha del Pago</label>
+                    <input type="date" id="pagoFecha" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="pagoNotas">Notas (opcional)</label>
+                    <textarea id="pagoNotas" class="form-control" rows="2" placeholder="Ej: Transferencia, cheque, etc."></textarea>
+                </div>
+                <div class="form-group">
+                    <p><strong>Deuda total:</strong> $<span id="deudaTotalProv">0</span></p>
+                    <p><strong>Saldo después del pago:</strong> $<span id="saldoDespuesProv">0</span></p>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Registrar Pago</button>
             </form>
         </div>
     </div>
