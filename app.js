@@ -10,6 +10,7 @@ const firebaseConfig = {
 };
 
 // Inicializar Firebase
+console.log("🔥 Inicializando Firebase...");
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const database = firebase.database();
@@ -29,6 +30,7 @@ const ADMIN_EMAIL = 'luishparedes94@gmail.com';
 const ADMIN_PHONE = '+58-412-5278450';
 
 // Elementos DOM
+console.log("🔍 Inicializando elementos DOM...");
 const authContainer = document.getElementById('authContainer');
 const loginCard = document.getElementById('loginCard');
 const registerCard = document.getElementById('registerCard');
@@ -106,6 +108,8 @@ const proveedorPhoneInput = document.getElementById('proveedorPhone');
 
 // Inicialización de la aplicación
 document.addEventListener('DOMContentLoaded', function() {
+    console.log("🚀 Aplicación iniciada");
+    
     // Configurar monitoreo de conexión
     setupConnectionMonitoring();
     
@@ -124,13 +128,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // CORRECCIÓN: Configurar input de teléfono para permitir guiones
     setupPhoneInput();
     
+    // Configurar modales y formularios
+    setupModals();
+    setupForms();
+    setupTabs();
+    
     // Verificar estado de autenticación
+    console.log("🔐 Verificando estado de autenticación...");
     auth.onAuthStateChanged((user) => {
         if (user) {
+            console.log("✅ Usuario autenticado:", user.email);
             currentUser = user;
             loadUserData(user.uid);
             showApp();
         } else {
+            console.log("❌ Usuario no autenticado");
             currentUser = null;
             showAuth();
         }
@@ -139,6 +151,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Configurar sistema de notificaciones
 function setupNotifications() {
+    console.log("🔔 Configurando notificaciones...");
+    
     if (notificationBtn) {
         notificationBtn.addEventListener('click', function() {
             notificationCenter.classList.toggle('active');
@@ -153,7 +167,7 @@ function setupNotifications() {
     
     // Cerrar notificaciones al hacer clic fuera
     window.addEventListener('click', function(e) {
-        if (!notificationCenter.contains(e.target) && !notificationBtn.contains(e.target)) {
+        if (notificationCenter && !notificationCenter.contains(e.target) && notificationBtn && !notificationBtn.contains(e.target)) {
             notificationCenter.classList.remove('active');
         }
     });
@@ -204,6 +218,8 @@ function updateNotificationBadge() {
 
 // CORRECCIÓN: Configurar input de teléfono para permitir guiones (formato simple)
 function setupPhoneInput() {
+    console.log("📞 Configurando inputs de teléfono...");
+    
     const phoneInputs = [clientPhoneInput, proveedorPhoneInput];
     
     phoneInputs.forEach(input => {
@@ -260,6 +276,8 @@ function setupMessageChannelListener() {
 
 // Configurar monitoreo de conexión
 function setupConnectionMonitoring() {
+    console.log("🌐 Configurando monitoreo de conexión...");
+    
     const databaseRef = database.ref('.info/connected');
     databaseRef.on('value', (snapshot) => {
         const connected = snapshot.val();
@@ -283,15 +301,17 @@ function setupConnectionMonitoring() {
 
 // Configurar navegación para usuarios no autenticados
 function setupNavigationForUnauthenticated() {
-    const navLinks = mainNav.querySelectorAll('.nav-link');
+    console.log("🧭 Configurando navegación para usuarios no autenticados...");
+    
+    const navLinks = mainNav ? mainNav.querySelectorAll('.nav-link') : [];
     navLinks.forEach(link => {
         link.addEventListener('click', function(e) {
             if (!currentUser) {
                 e.preventDefault();
                 showNotification('Debes iniciar sesión para acceder a esta sección', 'warning');
-                authContainer.style.display = 'flex';
-                loginCard.style.display = 'block';
-                registerCard.style.display = 'none';
+                if (authContainer) authContainer.style.display = 'flex';
+                if (loginCard) loginCard.style.display = 'block';
+                if (registerCard) registerCard.style.display = 'none';
             }
         });
     });
@@ -299,6 +319,8 @@ function setupNavigationForUnauthenticated() {
 
 // Mostrar notificación
 function showNotification(message, type = 'info') {
+    console.log(`📢 Notificación: ${message}`);
+    
     const notification = document.createElement('div');
     notification.className = `alert alert-${type}`;
     notification.innerHTML = `
@@ -345,20 +367,22 @@ function copyToClipboard(text) {
 
 // Configurar listeners de autenticación
 function setupAuthListeners() {
+    console.log("🔑 Configurando listeners de autenticación...");
+    
     // Switch entre login y registro
     if (switchToRegister) {
         switchToRegister.addEventListener('click', function(e) {
             e.preventDefault();
-            loginCard.style.display = 'none';
-            registerCard.style.display = 'block';
+            if (loginCard) loginCard.style.display = 'none';
+            if (registerCard) registerCard.style.display = 'block';
         });
     }
 
     if (switchToLogin) {
         switchToLogin.addEventListener('click', function(e) {
             e.preventDefault();
-            registerCard.style.display = 'none';
-            loginCard.style.display = 'block';
+            if (registerCard) registerCard.style.display = 'none';
+            if (loginCard) loginCard.style.display = 'block';
         });
     }
 
@@ -369,13 +393,16 @@ function setupAuthListeners() {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
             
+            console.log("🔐 Intentando login...");
+            
             auth.signInWithEmailAndPassword(email, password)
                 .then((userCredential) => {
-                    console.log('Usuario autenticado:', userCredential.user);
+                    console.log('✅ Usuario autenticado:', userCredential.user.email);
                     loginForm.reset();
                     showNotification('Sesión iniciada correctamente', 'success');
                 })
                 .catch((error) => {
+                    console.error('❌ Error al iniciar sesión:', error);
                     showNotification('Error al iniciar sesión: ' + error.message, 'danger');
                 });
         });
@@ -389,6 +416,8 @@ function setupAuthListeners() {
             const email = document.getElementById('registerEmail').value;
             const password = document.getElementById('registerPassword').value;
             
+            console.log("📝 Intentando registro...");
+            
             // CORRECCIÓN: Solo tu correo puede tener acceso administrativo
             let userPlan = 'free';
             let isAdmin = false;
@@ -396,11 +425,13 @@ function setupAuthListeners() {
             if (email === ADMIN_EMAIL) {
                 userPlan = 'pro';
                 isAdmin = true;
+                console.log("👑 Usuario administrador detectado");
             }
             
             auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
                     const user = userCredential.user;
+                    console.log('✅ Usuario creado en Auth:', user.email);
                     
                     return database.ref('users/' + user.uid).set({
                         email: user.email,
@@ -412,12 +443,13 @@ function setupAuthListeners() {
                     });
                 })
                 .then(() => {
-                    console.log('Usuario registrado exitosamente');
+                    console.log('✅ Usuario registrado exitosamente en Database');
                     registerForm.reset();
                     if (switchToLogin) switchToLogin.click();
                     showNotification('Cuenta creada exitosamente', 'success');
                 })
                 .catch((error) => {
+                    console.error('❌ Error al registrar usuario:', error);
                     showNotification('Error al registrar usuario: ' + error.message, 'danger');
                 });
         });
@@ -426,41 +458,44 @@ function setupAuthListeners() {
     // Botones de login/registro/logout
     if (loginBtn) {
         loginBtn.addEventListener('click', function() {
-            authContainer.style.display = 'flex';
-            dashboard.style.display = 'none';
-            cobranzasSection.style.display = 'none';
-            proveedoresSection.style.display = 'none';
-            mensajesSection.style.display = 'none';
-            empresaSection.style.display = 'none';
-            adminSection.style.display = 'none';
-            loginCard.style.display = 'block';
-            registerCard.style.display = 'none';
+            console.log("📱 Click en login button");
+            if (authContainer) authContainer.style.display = 'flex';
+            if (dashboard) dashboard.style.display = 'none';
+            if (cobranzasSection) cobranzasSection.style.display = 'none';
+            if (proveedoresSection) proveedoresSection.style.display = 'none';
+            if (mensajesSection) mensajesSection.style.display = 'none';
+            if (empresaSection) empresaSection.style.display = 'none';
+            if (adminSection) adminSection.style.display = 'none';
+            if (loginCard) loginCard.style.display = 'block';
+            if (registerCard) registerCard.style.display = 'none';
         });
     }
 
     if (registerBtn) {
         registerBtn.addEventListener('click', function() {
-            authContainer.style.display = 'flex';
-            loginCard.style.display = 'none';
-            registerCard.style.display = 'block';
-            dashboard.style.display = 'none';
-            cobranzasSection.style.display = 'none';
-            proveedoresSection.style.display = 'none';
-            mensajesSection.style.display = 'none';
-            empresaSection.style.display = 'none';
-            adminSection.style.display = 'none';
+            console.log("📱 Click en register button");
+            if (authContainer) authContainer.style.display = 'flex';
+            if (loginCard) loginCard.style.display = 'none';
+            if (registerCard) registerCard.style.display = 'block';
+            if (dashboard) dashboard.style.display = 'none';
+            if (cobranzasSection) cobranzasSection.style.display = 'none';
+            if (proveedoresSection) proveedoresSection.style.display = 'none';
+            if (mensajesSection) mensajesSection.style.display = 'none';
+            if (empresaSection) empresaSection.style.display = 'none';
+            if (adminSection) adminSection.style.display = 'none';
         });
     }
 
     if (logoutBtn) {
         logoutBtn.addEventListener('click', function() {
+            console.log("🚪 Cerrando sesión...");
             auth.signOut()
                 .then(() => {
-                    console.log('Sesión cerrada');
+                    console.log('✅ Sesión cerrada correctamente');
                     showNotification('Sesión cerrada correctamente', 'success');
                 })
                 .catch((error) => {
-                    console.error('Error al cerrar sesión:', error);
+                    console.error('❌ Error al cerrar sesión:', error);
                 });
         });
     }
@@ -468,11 +503,14 @@ function setupAuthListeners() {
 
 // Cargar datos del usuario desde Realtime Database
 function loadUserData(userId) {
+    console.log("👤 Cargando datos del usuario:", userId);
+    
     database.ref('users/' + userId).once('value')
         .then((snapshot) => {
             if (snapshot.exists()) {
                 userData = snapshot.val();
                 userData.userId = userId;
+                console.log("✅ Datos de usuario cargados:", userData);
                 
                 updateUserUI();
                 loadCompanyData(userId);
@@ -482,6 +520,7 @@ function loadUserData(userId) {
                 
                 // CORRECCIÓN 2: Solo tu correo tiene acceso administrativo
                 if (userData.email === ADMIN_EMAIL || userData.isAdmin) {
+                    console.log("👑 Usuario es administrador, mostrando panel admin");
                     document.querySelectorAll('.admin-only').forEach(el => {
                         el.style.display = 'block';
                     });
@@ -492,35 +531,44 @@ function loadUserData(userId) {
                 if (notificationBtn) {
                     notificationBtn.style.display = 'flex';
                 }
+            } else {
+                console.log("❌ No se encontraron datos de usuario");
             }
         })
         .catch((error) => {
-            console.error('Error al cargar datos del usuario:', error);
+            console.error('❌ Error al cargar datos del usuario:', error);
         });
 }
 
 // Cargar datos de la empresa
 function loadCompanyData(userId) {
+    console.log("🏢 Cargando datos de empresa para usuario:", userId);
+    
     database.ref('empresas/' + userId).once('value')
         .then((snapshot) => {
             if (snapshot.exists()) {
                 companyData = snapshot.val();
                 companyData.userId = userId;
+                console.log("✅ Datos de empresa cargados:", companyData);
                 
-                document.getElementById('companyName').value = companyData.nombre || '';
-                document.getElementById('companyRif').value = companyData.rif || '';
-                document.getElementById('companyPhone').value = companyData.telefono || '';
-                document.getElementById('companyEmail').value = companyData.email || '';
-                document.getElementById('companyContacts').value = companyData.contactos || '';
+                if (document.getElementById('companyName')) document.getElementById('companyName').value = companyData.nombre || '';
+                if (document.getElementById('companyRif')) document.getElementById('companyRif').value = companyData.rif || '';
+                if (document.getElementById('companyPhone')) document.getElementById('companyPhone').value = companyData.telefono || '';
+                if (document.getElementById('companyEmail')) document.getElementById('companyEmail').value = companyData.email || '';
+                if (document.getElementById('companyContacts')) document.getElementById('companyContacts').value = companyData.contactos || '';
+            } else {
+                console.log("ℹ️ No se encontraron datos de empresa");
             }
         })
         .catch((error) => {
-            console.error('Error al cargar datos de la empresa:', error);
+            console.error('❌ Error al cargar datos de la empresa:', error);
         });
 }
 
-// Cargar cobranzas del usuario - CORREGIDO: Evitar duplicación
+// Cargar cobranzas del usuario
 function loadCobranzas(userId) {
+    console.log("💰 Cargando cobranzas para usuario:", userId);
+    
     database.ref('cobranzas').orderByChild('userId').equalTo(userId).on('value', (snapshot) => {
         cobranzas = [];
         snapshot.forEach((childSnapshot) => {
@@ -540,12 +588,13 @@ function loadCobranzas(userId) {
         });
         
         cobranzas.sort((a, b) => new Date(b.fechaEmision) - new Date(a.fechaEmision));
+        console.log(`✅ ${cobranzas.length} cobranzas cargadas`);
         
         updateCobranzasUI();
         updateDashboardStats();
         updateUpcomingList();
         
-        if (userData.plan === 'free' && cobranzas.length >= 3) {
+        if (userData && userData.plan === 'free' && cobranzas.length >= 3) {
             if (freeLimitAlert) freeLimitAlert.style.display = 'flex';
         } else {
             if (freeLimitAlert) freeLimitAlert.style.display = 'none';
@@ -555,6 +604,8 @@ function loadCobranzas(userId) {
 
 // Cargar proveedores del usuario
 function loadProveedores(userId) {
+    console.log("🚚 Cargando proveedores para usuario:", userId);
+    
     database.ref('proveedores').orderByChild('userId').equalTo(userId).on('value', (snapshot) => {
         proveedores = [];
         snapshot.forEach((childSnapshot) => {
@@ -574,6 +625,7 @@ function loadProveedores(userId) {
         });
         
         proveedores.sort((a, b) => new Date(b.fechaEmision) - new Date(a.fechaEmision));
+        console.log(`✅ ${proveedores.length} proveedores cargados`);
         
         updateProveedoresUI();
         updateDashboardStats();
@@ -659,9 +711,9 @@ function calcularSaldoPendienteProveedor(proveedor) {
     return parseFloat(proveedor.monto) - totalPagado;
 }
 
-// CORRECCIÓN: Cargar actividad reciente en tiempo real
+// Cargar actividad reciente
 function loadRecentActivity(userId) {
-    console.log('🔍 Cargando actividades para usuario:', userId);
+    console.log("📊 Cargando actividades para usuario:", userId);
     
     database.ref('actividades')
         .orderByChild('userId')
@@ -678,8 +730,6 @@ function loadRecentActivity(userId) {
                 
                 const activityDate = new Date(activity.fecha);
                 const isRecent = activityDate >= twentyFourHoursAgo;
-                
-                console.log('📅 Actividad:', activity.descripcion, '| Fecha:', activity.fecha, '| Es reciente:', isRecent);
                 
                 // Mostrar actividades de las últimas 24 horas
                 if (isRecent) {
@@ -698,7 +748,7 @@ function loadRecentActivity(userId) {
         });
 }
 
-// CORRECCIÓN: Mejorar actualización de actividad reciente
+// Actualizar UI de actividad reciente
 function updateRecentActivityUI(activities) {
     const activityList = document.getElementById('recentActivity');
     if (!activityList) {
@@ -926,13 +976,15 @@ function calcularSaldoPendiente(cobranza) {
     return parseFloat(cobranza.monto) - totalAbonado;
 }
 
-// CORRECCIÓN 3: Actualizar UI del usuario sin duplicar badges
+// Actualizar UI del usuario
 function updateUserUI() {
+    console.log("👤 Actualizando UI del usuario");
+    
     if (userName) userName.textContent = userData.nombre;
     if (userAvatar) userAvatar.textContent = userData.nombre.charAt(0).toUpperCase();
     
     // Limpiar badge anterior antes de crear uno nuevo
-    const existingBadge = userInfo.querySelector('.plan-badge');
+    const existingBadge = userInfo ? userInfo.querySelector('.plan-badge') : null;
     if (existingBadge) {
         existingBadge.remove();
     }
@@ -943,6 +995,737 @@ function updateUserUI() {
         userPlanBadge.className = `plan-badge plan-${userData.plan}`;
         userPlanBadge.style.display = 'inline-block';
     }
+}
+
+// Mostrar aplicación (usuario autenticado)
+function showApp() {
+    console.log("🏠 Mostrando aplicación");
+    
+    if (authContainer) authContainer.style.display = 'none';
+    if (dashboard) dashboard.style.display = 'block';
+    if (userInfo) userInfo.style.display = 'flex';
+    if (loginBtn) loginBtn.style.display = 'none';
+    if (registerBtn) registerBtn.style.display = 'none';
+    if (logoutBtn) logoutBtn.style.display = 'block';
+    
+    setupNavigation();
+}
+
+// Mostrar autenticación (usuario no autenticado)
+function showAuth() {
+    console.log("🔐 Mostrando autenticación");
+    
+    if (authContainer) authContainer.style.display = 'flex';
+    if (loginCard) loginCard.style.display = 'block';
+    if (registerCard) registerCard.style.display = 'none';
+    if (dashboard) dashboard.style.display = 'none';
+    if (cobranzasSection) cobranzasSection.style.display = 'none';
+    if (proveedoresSection) proveedoresSection.style.display = 'none';
+    if (mensajesSection) mensajesSection.style.display = 'none';
+    if (empresaSection) empresaSection.style.display = 'none';
+    if (adminSection) adminSection.style.display = 'none';
+    if (userInfo) userInfo.style.display = 'none';
+    if (loginBtn) loginBtn.style.display = 'inline-block';
+    if (registerBtn) registerBtn.style.display = 'inline-block';
+    if (logoutBtn) logoutBtn.style.display = 'none';
+    
+    // Ocultar todas las secciones excepto auth
+    document.querySelectorAll('.dashboard, .admin-panel').forEach(section => {
+        section.style.display = 'none';
+    });
+}
+
+// Configurar navegación
+function setupNavigation() {
+    console.log("🧭 Configurando navegación");
+    
+    navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            navLinks.forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+            
+            if (dashboard) dashboard.style.display = 'none';
+            if (cobranzasSection) cobranzasSection.style.display = 'none';
+            if (proveedoresSection) proveedoresSection.style.display = 'none';
+            if (mensajesSection) mensajesSection.style.display = 'none';
+            if (empresaSection) empresaSection.style.display = 'none';
+            if (adminSection) adminSection.style.display = 'none';
+            
+            const target = this.getAttribute('data-target');
+            const targetElement = document.getElementById(target);
+            if (targetElement) {
+                targetElement.style.display = 'block';
+            }
+            
+            if (target === 'admin') {
+                loadAdminData();
+            }
+        });
+    });
+}
+
+// Configurar modales
+function setupModals() {
+    console.log("📦 Configurando modales");
+    
+    if (addCobranzaBtn) {
+        addCobranzaBtn.addEventListener('click', openCobranzaModal);
+    }
+    if (addCobranzaBtn2) {
+        addCobranzaBtn2.addEventListener('click', openCobranzaModal);
+    }
+    if (addProveedorBtn) {
+        addProveedorBtn.addEventListener('click', openProveedorModal);
+    }
+    if (addProveedorBtn2) {
+        addProveedorBtn2.addEventListener('click', openProveedorModal);
+    }
+    if (addMessageBtn) {
+        addMessageBtn.addEventListener('click', openMessageModal);
+    }
+    
+    closeModals.forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (cobranzaModal) cobranzaModal.classList.remove('active');
+            if (proveedorModal) proveedorModal.classList.remove('active');
+            if (abonoModal) abonoModal.classList.remove('active');
+            if (pagoProveedorModal) pagoProveedorModal.classList.remove('active');
+            if (messageModal) messageModal.classList.remove('active');
+            if (reciboModal) reciboModal.classList.remove('active');
+        });
+    });
+    
+    window.addEventListener('click', function(e) {
+        if (cobranzaModal && e.target === cobranzaModal) cobranzaModal.classList.remove('active');
+        if (proveedorModal && e.target === proveedorModal) proveedorModal.classList.remove('active');
+        if (abonoModal && e.target === abonoModal) abonoModal.classList.remove('active');
+        if (pagoProveedorModal && e.target === pagoProveedorModal) pagoProveedorModal.classList.remove('active');
+        if (messageModal && e.target === messageModal) messageModal.classList.remove('active');
+        if (reciboModal && e.target === reciboModal) reciboModal.classList.remove('active');
+    });
+    
+    if (printReciboBtn) {
+        printReciboBtn.addEventListener('click', function() {
+            const reciboContent = document.getElementById('reciboContent');
+            if (reciboContent) {
+                const reciboHTML = reciboContent.innerHTML;
+                const ventana = window.open('', '_blank');
+                ventana.document.write(`
+                    <html>
+                        <head>
+                            <title>Recibo de Cobranza</title>
+                            <style>
+                                body { font-family: Arial, sans-serif; padding: 20px; }
+                                .recibo-container { max-width: 600px; margin: 0 auto; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="recibo-container">${reciboHTML}</div>
+                        </body>
+                    </html>
+                `);
+                ventana.document.close();
+                ventana.print();
+            }
+        });
+    }
+}
+
+// Configurar formularios
+function setupForms() {
+    console.log("📝 Configurando formularios");
+    
+    // Formulario de empresa
+    if (companyForm) {
+        companyForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const companyData = {
+                userId: currentUser.uid,
+                nombre: document.getElementById('companyName').value,
+                rif: document.getElementById('companyRif').value,
+                telefono: document.getElementById('companyPhone').value,
+                email: document.getElementById('companyEmail').value,
+                contactos: document.getElementById('companyContacts').value,
+                fechaActualizacion: new Date().toISOString()
+            };
+            
+            database.ref('empresas/' + currentUser.uid).set(companyData)
+                .then(() => {
+                    showNotification('Datos de empresa guardados correctamente', 'success');
+                    loadCompanyData(currentUser.uid);
+                    registrarActividad('sistema', 'Datos de empresa actualizados', `Empresa: ${companyData.nombre}`);
+                })
+                .catch((error) => {
+                    showNotification('Error al guardar datos: ' + error.message, 'danger');
+                });
+        });
+    }
+    
+    // Formulario de cobranza
+    let isSubmitting = false;
+    
+    if (cobranzaForm) {
+        cobranzaForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (isSubmitting) {
+                showNotification('Ya se está procesando la cobranza...', 'warning');
+                return;
+            }
+            
+            if (userData.plan === 'free' && cobranzas.length >= 3 && !cobranzaIdInput.value) {
+                showNotification('Has alcanzado el límite de 3 cobranzas para el plan Free. Contacta al administrador para actualizar a Pro.', 'warning');
+                return;
+            }
+            
+            // Formatear teléfono
+            let telefono = document.getElementById('clientPhone').value;
+            let telefonoLimpio = telefono.replace(/-/g, '');
+            if (telefonoLimpio && !telefonoLimpio.startsWith('+58')) {
+                telefonoLimpio = '+58' + telefonoLimpio;
+            }
+            
+            const cobranzaData = {
+                userId: currentUser.uid,
+                cliente: document.getElementById('clientName').value,
+                telefono: telefonoLimpio,
+                email: document.getElementById('clientEmail').value,
+                monto: parseFloat(document.getElementById('amount').value),
+                fechaEmision: document.getElementById('issueDate').value,
+                fechaVencimiento: document.getElementById('dueDate').value,
+                estado: 'pendiente',
+                notas: document.getElementById('notes').value,
+                fechaCreacion: new Date().toISOString(),
+                saldoPendiente: parseFloat(document.getElementById('amount').value)
+            };
+            
+            isSubmitting = true;
+            cobranzaSubmitBtn.disabled = true;
+            cobranzaSubmitBtn.textContent = 'Guardando...';
+            
+            if (cobranzaIdInput.value) {
+                database.ref('cobranzas/' + cobranzaIdInput.value).update(cobranzaData)
+                    .then(() => {
+                        showNotification('Cobranza actualizada correctamente', 'success');
+                        cobranzaForm.reset();
+                        cobranzaModal.classList.remove('active');
+                        cobranzaIdInput.value = '';
+                        cobranzaModalTitle.textContent = 'Nueva Cobranza';
+                        cobranzaSubmitBtn.textContent = 'Guardar Cobranza';
+                        registrarActividad('cobranza', `Cobranza actualizada - ${cobranzaData.cliente}`, `Monto: $${cobranzaData.monto}`);
+                    })
+                    .catch((error) => {
+                        showNotification('Error al actualizar cobranza: ' + error.message, 'danger');
+                    })
+                    .finally(() => {
+                        isSubmitting = false;
+                        cobranzaSubmitBtn.disabled = false;
+                    });
+            } else {
+                database.ref('cobranzas').push(cobranzaData)
+                    .then(() => {
+                        showNotification('Cobranza agregada correctamente', 'success');
+                        cobranzaForm.reset();
+                        cobranzaModal.classList.remove('active');
+                        registrarActividad('cobranza', `Nueva cobranza creada - ${cobranzaData.cliente}`, `Monto: $${cobranzaData.monto}, Vence: ${formatDate(cobranzaData.fechaVencimiento)}`);
+                    })
+                    .catch((error) => {
+                        showNotification('Error al agregar cobranza: ' + error.message, 'danger');
+                    })
+                    .finally(() => {
+                        isSubmitting = false;
+                        cobranzaSubmitBtn.disabled = false;
+                        cobranzaSubmitBtn.textContent = 'Guardar Cobranza';
+                    });
+            }
+        });
+    }
+    
+    // Formulario de proveedor
+    if (proveedorForm) {
+        proveedorForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            let telefono = document.getElementById('proveedorPhone').value;
+            let telefonoLimpio = telefono.replace(/-/g, '');
+            if (telefonoLimpio && !telefonoLimpio.startsWith('+58')) {
+                telefonoLimpio = '+58' + telefonoLimpio;
+            }
+            
+            const proveedorData = {
+                userId: currentUser.uid,
+                nombre: document.getElementById('proveedorName').value,
+                contacto: document.getElementById('proveedorContact').value,
+                telefono: telefonoLimpio,
+                email: document.getElementById('proveedorEmail').value,
+                concepto: document.getElementById('proveedorConcepto').value,
+                monto: parseFloat(document.getElementById('proveedorMonto').value),
+                fechaEmision: document.getElementById('proveedorIssueDate').value,
+                fechaVencimiento: document.getElementById('proveedorDueDate').value,
+                estado: 'pendiente',
+                notas: document.getElementById('proveedorNotes').value,
+                fechaCreacion: new Date().toISOString(),
+                saldoPendiente: parseFloat(document.getElementById('proveedorMonto').value)
+            };
+            
+            if (proveedorIdInput.value) {
+                database.ref('proveedores/' + proveedorIdInput.value).update(proveedorData)
+                    .then(() => {
+                        showNotification('Proveedor actualizado correctamente', 'success');
+                        proveedorForm.reset();
+                        proveedorModal.classList.remove('active');
+                        proveedorIdInput.value = '';
+                        proveedorModalTitle.textContent = 'Nuevo Proveedor';
+                        registrarActividad('proveedor', `Proveedor actualizado - ${proveedorData.nombre}`, `Monto: $${proveedorData.monto}`);
+                    })
+                    .catch((error) => {
+                        showNotification('Error al actualizar proveedor: ' + error.message, 'danger');
+                    });
+            } else {
+                database.ref('proveedores').push(proveedorData)
+                    .then(() => {
+                        showNotification('Proveedor agregado correctamente', 'success');
+                        proveedorForm.reset();
+                        proveedorModal.classList.remove('active');
+                        registrarActividad('proveedor', `Nuevo proveedor creado - ${proveedorData.nombre}`, `Monto: $${proveedorData.monto}, Vence: ${formatDate(proveedorData.fechaVencimiento)}`);
+                    })
+                    .catch((error) => {
+                        showNotification('Error al agregar proveedor: ' + error.message, 'danger');
+                    });
+            }
+        });
+    }
+    
+    // Formulario de abono
+    if (abonoForm) {
+        abonoForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const cobranzaId = document.getElementById('abonoCobranzaId').value;
+            const cobranza = cobranzas.find(c => c.id === cobranzaId);
+            
+            if (!cobranza) {
+                showNotification('Cobranza no encontrada', 'danger');
+                return;
+            }
+            
+            const abonoData = {
+                cobranzaId: cobranzaId,
+                userId: currentUser.uid,
+                monto: parseFloat(document.getElementById('abonoMonto').value),
+                fecha: document.getElementById('abonoFecha').value,
+                notas: document.getElementById('abonoNotas').value,
+                fechaRegistro: new Date().toISOString()
+            };
+            
+            database.ref('abonos').push(abonoData)
+                .then(() => {
+                    // Actualizar saldo pendiente en la cobranza
+                    const nuevoSaldo = calcularSaldoPendiente(cobranza) - abonoData.monto;
+                    database.ref('cobranzas/' + cobranzaId).update({
+                        saldoPendiente: nuevoSaldo
+                    })
+                    .then(() => {
+                        showNotification('Abono registrado correctamente', 'success');
+                        abonoForm.reset();
+                        abonoModal.classList.remove('active');
+                        
+                        // Registrar actividad
+                        registrarActividad('abono', `Abono registrado - ${cobranza.cliente}`, `Monto: $${abonoData.monto}, Nuevo saldo: $${nuevoSaldo.toFixed(2)}`);
+                        
+                        // Si el saldo llega a cero, marcar como pagado
+                        if (nuevoSaldo <= 0) {
+                            database.ref('cobranzas/' + cobranzaId).update({
+                                estado: 'pagado'
+                            }).then(() => {
+                                registrarActividad('pago', `Cobranza pagada completamente - ${cobranza.cliente}`);
+                            });
+                        }
+                    });
+                })
+                .catch((error) => {
+                    showNotification('Error al registrar abono: ' + error.message, 'danger');
+                });
+        });
+    }
+    
+    // Formulario de pago a proveedor
+    if (pagoProveedorForm) {
+        pagoProveedorForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const proveedorId = document.getElementById('pagoProveedorId').value;
+            const proveedor = proveedores.find(p => p.id === proveedorId);
+            
+            if (!proveedor) {
+                showNotification('Proveedor no encontrada', 'danger');
+                return;
+            }
+            
+            const pagoData = {
+                proveedorId: proveedorId,
+                userId: currentUser.uid,
+                monto: parseFloat(document.getElementById('pagoMonto').value),
+                fecha: document.getElementById('pagoFecha').value,
+                notas: document.getElementById('pagoNotas').value,
+                fechaRegistro: new Date().toISOString()
+            };
+            
+            database.ref('pagosProveedores').push(pagoData)
+                .then(() => {
+                    // Actualizar saldo pendiente en el proveedor
+                    const nuevoSaldo = calcularSaldoPendienteProveedor(proveedor) - pagoData.monto;
+                    database.ref('proveedores/' + proveedorId).update({
+                        saldoPendiente: nuevoSaldo
+                    })
+                    .then(() => {
+                        showNotification('Pago registrado correctamente', 'success');
+                        pagoProveedorForm.reset();
+                        pagoProveedorModal.classList.remove('active');
+                        
+                        // Registrar actividad
+                        registrarActividad('pago_proveedor', `Pago registrado - ${proveedor.nombre}`, `Monto: $${pagoData.monto}, Nuevo saldo: $${nuevoSaldo.toFixed(2)}`);
+                        
+                        // Si el saldo llega a cero, marcar como pagado
+                        if (nuevoSaldo <= 0) {
+                            database.ref('proveedores/' + proveedorId).update({
+                                estado: 'pagado'
+                            }).then(() => {
+                                registrarActividad('pago', `Proveedor pagado completamente - ${proveedor.nombre}`);
+                            });
+                        }
+                    });
+                })
+                .catch((error) => {
+                    showNotification('Error al registrar pago: ' + error.message, 'danger');
+                });
+        });
+    }
+    
+    // Formulario de mensaje
+    if (messageForm) {
+        messageForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const clientId = document.getElementById('messageClient').value;
+            const client = cobranzas.find(c => c.id === clientId);
+            
+            if (!client) {
+                showNotification('Cliente no encontrado', 'danger');
+                return;
+            }
+            
+            const messageType = document.getElementById('messageType').value;
+            const messageContent = document.getElementById('messageContent').value;
+            const channel = document.getElementById('messageChannel').value;
+            
+            const messageData = {
+                userId: currentUser.uid,
+                tipo: messageType,
+                contenido: messageContent,
+                cliente: client.cliente,
+                clienteId: clientId,
+                canal: channel,
+                fechaEnvio: new Date().toISOString(),
+                estado: 'pendiente'
+            };
+            
+            // Enviar mensaje por WhatsApp si está seleccionado
+            if (channel === 'whatsapp') {
+                if (enviarWhatsApp(client, messageContent)) {
+                    messageData.estado = 'enviado';
+                    showNotification('Mensaje enviado por WhatsApp', 'success');
+                    registrarActividad('mensaje', `Mensaje WhatsApp enviado - ${client.cliente}`, `Tipo: ${messageType}`);
+                }
+            } else if (channel === 'email') {
+                // Copiar mensaje al portapapeles para email
+                copyToClipboard(messageContent);
+                showNotification('Mensaje copiado al portapapeles. Péguelo en su cliente de email.', 'success');
+                registrarActividad('mensaje', `Mensaje Email preparado - ${client.cliente}`, `Tipo: ${messageType} - Mensaje copiado al portapapeles`);
+            }
+            
+            database.ref('mensajes').push(messageData)
+                .then(() => {
+                    messageForm.reset();
+                    messageModal.classList.remove('active');
+                })
+                .catch((error) => {
+                    showNotification('Error al guardar mensaje: ' + error.message, 'danger');
+                });
+        });
+        
+        // Cambiar contenido del mensaje según el tipo seleccionado
+        document.getElementById('messageType').addEventListener('change', function() {
+            const type = this.value;
+            let content = '';
+            
+            if (type === 'recordatorio_amable') {
+                content = 'Hola {cliente}, desde {empresa} te recordamos que tu pago de {monto} vence el {vencimiento}. Contáctanos: {telefono}.';
+            } else if (type === 'recordatorio_cercano') {
+                content = 'Hola {cliente}, tu pago de {monto} con {empresa} vence hoy ({vencimiento}). Agradecemos tu pronta atención.';
+            } else if (type === 'vencido_leve') {
+                content = 'Hola {cliente}, tu pago de {monto} con {empresa} está vencido desde {vencimiento}. Por favor realiza tu pago cuanto antes.';
+            } else if (type === 'ultima_advertencia') {
+                content = 'Estimado {cliente}, tu pago de {monto} con {empresa} está vencido desde {vencimiento}. Esta es la última notificación antes de tomar medidas. Contáctanos: {telefono}.';
+            }
+            
+            if (content && document.getElementById('messageClient').value) {
+                const clientId = document.getElementById('messageClient').value;
+                const client = cobranzas.find(c => c.id === clientId);
+                
+                if (client && companyData) {
+                    content = content
+                        .replace('{cliente}', client.cliente)
+                        .replace('{empresa}', companyData.nombre)
+                        .replace('{monto}', `$${client.monto}`)
+                        .replace('{vencimiento}', formatDate(client.fechaVencimiento))
+                        .replace('{telefono}', companyData.telefono);
+                }
+            }
+            
+            document.getElementById('messageContent').value = content;
+        });
+        
+        document.getElementById('messageClient').addEventListener('change', function() {
+            const type = document.getElementById('messageType').value;
+            if (type && type !== 'personalizado') {
+                document.getElementById('messageType').dispatchEvent(new Event('change'));
+            }
+        });
+    }
+}
+
+// Configurar tabs
+function setupTabs() {
+    console.log("📑 Configurando tabs");
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const tabType = this.getAttribute('data-tab');
+            
+            if (tabType.includes('prov')) {
+                // Tabs de proveedores
+                tabs.forEach(t => {
+                    if (t.getAttribute('data-tab').includes('prov')) {
+                        t.classList.remove('active');
+                    }
+                });
+                this.classList.add('active');
+                currentTabProv = tabType;
+                updateProveedoresUI();
+            } else {
+                // Tabs de cobranzas
+                tabs.forEach(t => {
+                    if (!t.getAttribute('data-tab').includes('prov')) {
+                        t.classList.remove('active');
+                    }
+                });
+                this.classList.add('active');
+                currentTab = tabType;
+                updateCobranzasUI();
+            }
+        });
+    });
+}
+
+// Abrir modal de cobranza
+function openCobranzaModal() {
+    if (document.getElementById('issueDate')) {
+        document.getElementById('issueDate').valueAsDate = new Date();
+        
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 30);
+        document.getElementById('dueDate').valueAsDate = dueDate;
+    }
+    
+    if (cobranzaForm) cobranzaForm.reset();
+    if (cobranzaIdInput) cobranzaIdInput.value = '';
+    if (cobranzaModalTitle) cobranzaModalTitle.textContent = 'Nueva Cobranza';
+    if (cobranzaSubmitBtn) {
+        cobranzaSubmitBtn.textContent = 'Guardar Cobranza';
+        cobranzaSubmitBtn.disabled = false;
+    }
+    
+    if (cobranzaModal) cobranzaModal.classList.add('active');
+}
+
+// Abrir modal de proveedor
+function openProveedorModal() {
+    if (document.getElementById('proveedorIssueDate')) {
+        document.getElementById('proveedorIssueDate').valueAsDate = new Date();
+        
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 30);
+        document.getElementById('proveedorDueDate').valueAsDate = dueDate;
+    }
+    
+    if (proveedorForm) proveedorForm.reset();
+    if (proveedorIdInput) proveedorIdInput.value = '';
+    if (proveedorModalTitle) proveedorModalTitle.textContent = 'Nuevo Proveedor';
+    if (proveedorSubmitBtn) proveedorSubmitBtn.textContent = 'Guardar Proveedor';
+    
+    if (proveedorModal) proveedorModal.classList.add('active');
+}
+
+// Abrir modal para registrar abono
+function openAbonoModal(cobranzaId) {
+    const cobranza = cobranzas.find(c => c.id === cobranzaId);
+    if (!cobranza) return;
+    
+    if (document.getElementById('abonoCobranzaId')) {
+        document.getElementById('abonoCobranzaId').value = cobranzaId;
+    }
+    if (document.getElementById('deudaTotal')) {
+        document.getElementById('deudaTotal').textContent = cobranza.monto;
+    }
+    
+    const saldoPendiente = cobranza.saldoPendiente || calcularSaldoPendiente(cobranza);
+    if (document.getElementById('abonoMonto')) {
+        document.getElementById('abonoMonto').setAttribute('max', saldoPendiente);
+        document.getElementById('abonoMonto').value = '';
+        
+        document.getElementById('abonoMonto').addEventListener('input', function() {
+            const montoAbono = parseFloat(this.value) || 0;
+            const nuevoSaldo = saldoPendiente - montoAbono;
+            if (document.getElementById('saldoDespues')) {
+                document.getElementById('saldoDespues').textContent = nuevoSaldo.toFixed(2);
+            }
+        });
+    }
+    
+    if (document.getElementById('abonoFecha')) {
+        document.getElementById('abonoFecha').valueAsDate = new Date();
+    }
+    if (document.getElementById('abonoNotas')) {
+        document.getElementById('abonoNotas').value = '';
+    }
+    if (document.getElementById('saldoDespues')) {
+        document.getElementById('saldoDespues').textContent = saldoPendiente.toFixed(2);
+    }
+    
+    if (abonoModal) abonoModal.classList.add('active');
+}
+
+// Abrir modal para registrar pago a proveedor
+function openPagoProveedorModal(proveedorId) {
+    const proveedor = proveedores.find(p => p.id === proveedorId);
+    if (!proveedor) return;
+    
+    if (document.getElementById('pagoProveedorId')) {
+        document.getElementById('pagoProveedorId').value = proveedorId;
+    }
+    if (document.getElementById('deudaTotalProv')) {
+        document.getElementById('deudaTotalProv').textContent = proveedor.monto;
+    }
+    
+    const saldoPendiente = proveedor.saldoPendiente || calcularSaldoPendienteProveedor(proveedor);
+    if (document.getElementById('pagoMonto')) {
+        document.getElementById('pagoMonto').setAttribute('max', saldoPendiente);
+        document.getElementById('pagoMonto').value = '';
+        
+        document.getElementById('pagoMonto').addEventListener('input', function() {
+            const montoPago = parseFloat(this.value) || 0;
+            const nuevoSaldo = saldoPendiente - montoPago;
+            if (document.getElementById('saldoDespuesProv')) {
+                document.getElementById('saldoDespuesProv').textContent = nuevoSaldo.toFixed(2);
+            }
+        });
+    }
+    
+    if (document.getElementById('pagoFecha')) {
+        document.getElementById('pagoFecha').valueAsDate = new Date();
+    }
+    if (document.getElementById('pagoNotas')) {
+        document.getElementById('pagoNotas').value = '';
+    }
+    if (document.getElementById('saldoDespuesProv')) {
+        document.getElementById('saldoDespuesProv').textContent = saldoPendiente.toFixed(2);
+    }
+    
+    if (pagoProveedorModal) pagoProveedorModal.classList.add('active');
+}
+
+// Abrir modal de mensaje
+function openMessageModal() {
+    const clientSelect = document.getElementById('messageClient');
+    if (clientSelect) {
+        clientSelect.innerHTML = '<option value="">Selecciona un cliente</option>';
+        
+        cobranzas.forEach(cobranza => {
+            const saldoPendiente = cobranza.saldoPendiente || calcularSaldoPendiente(cobranza);
+            if (cobranza.estado !== 'pagado' && saldoPendiente > 0) {
+                const option = document.createElement('option');
+                option.value = cobranza.id;
+                option.textContent = `${cobranza.cliente} - $${cobranza.monto}`;
+                clientSelect.appendChild(option);
+            }
+        });
+    }
+    
+    if (messageModal) messageModal.classList.add('active');
+}
+
+// Abrir modal de mensaje para una cobranza específica
+function openMessageModalForCobranza(cobranzaId) {
+    openMessageModal();
+    if (document.getElementById('messageClient')) {
+        document.getElementById('messageClient').value = cobranzaId;
+    }
+    
+    const cobranza = cobranzas.find(c => c.id === cobranzaId);
+    if (cobranza) {
+        const today = new Date();
+        const dueDate = new Date(cobranza.fechaVencimiento);
+        const diffTime = dueDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        let messageType = 'recordatorio_amable';
+        
+        if (diffDays < 0) {
+            const daysOverdue = Math.abs(diffDays);
+            if (daysOverdue > 15) {
+                messageType = 'ultima_advertencia';
+            } else {
+                messageType = 'vencido_leve';
+            }
+        } else if (diffDays === 0) {
+            messageType = 'recordatorio_cercano';
+        }
+        
+        if (document.getElementById('messageType')) {
+            document.getElementById('messageType').value = messageType;
+            document.getElementById('messageType').dispatchEvent(new Event('change'));
+        }
+    }
+}
+
+// Enviar mensaje por WhatsApp
+function enviarWhatsApp(cliente, mensaje) {
+    const telefono = cliente.telefono;
+    if (!telefono) {
+        showNotification('El cliente no tiene número de teléfono registrado', 'warning');
+        return false;
+    }
+    
+    // Asegurarse de que el teléfono tenga el formato correcto
+    let telefonoLimpio = telefono.replace(/\D/g, '');
+    if (telefonoLimpio.startsWith('58')) {
+        telefonoLimpio = telefonoLimpio;
+    } else if (telefonoLimpio.startsWith('0')) {
+        telefonoLimpio = '58' + telefonoLimpio.substring(1);
+    } else {
+        telefonoLimpio = '58' + telefonoLimpio;
+    }
+    
+    const mensajeCodificado = encodeURIComponent(mensaje);
+    const whatsappURL = `https://web.whatsapp.com/send?phone=${telefonoLimpio}&text=${mensajeCodificado}`;
+    
+    // Intentar abrir en la misma pestaña si es posible
+    window.open(whatsappURL, '_self').focus();
+    return true;
 }
 
 // Actualizar UI de cobranzas
@@ -1221,56 +2004,6 @@ function updateProveedoresUI() {
     });
 }
 
-// Abrir modal para registrar abono
-function openAbonoModal(cobranzaId) {
-    const cobranza = cobranzas.find(c => c.id === cobranzaId);
-    if (!cobranza) return;
-    
-    document.getElementById('abonoCobranzaId').value = cobranzaId;
-    document.getElementById('deudaTotal').textContent = cobranza.monto;
-    
-    const saldoPendiente = cobranza.saldoPendiente || calcularSaldoPendiente(cobranza);
-    document.getElementById('abonoMonto').setAttribute('max', saldoPendiente);
-    document.getElementById('abonoMonto').value = '';
-    document.getElementById('abonoFecha').valueAsDate = new Date();
-    document.getElementById('abonoNotas').value = '';
-    
-    document.getElementById('abonoMonto').addEventListener('input', function() {
-        const montoAbono = parseFloat(this.value) || 0;
-        const nuevoSaldo = saldoPendiente - montoAbono;
-        document.getElementById('saldoDespues').textContent = nuevoSaldo.toFixed(2);
-    });
-    
-    document.getElementById('saldoDespues').textContent = saldoPendiente.toFixed(2);
-    
-    abonoModal.classList.add('active');
-}
-
-// Abrir modal para registrar pago a proveedor
-function openPagoProveedorModal(proveedorId) {
-    const proveedor = proveedores.find(p => p.id === proveedorId);
-    if (!proveedor) return;
-    
-    document.getElementById('pagoProveedorId').value = proveedorId;
-    document.getElementById('deudaTotalProv').textContent = proveedor.monto;
-    
-    const saldoPendiente = proveedor.saldoPendiente || calcularSaldoPendienteProveedor(proveedor);
-    document.getElementById('pagoMonto').setAttribute('max', saldoPendiente);
-    document.getElementById('pagoMonto').value = '';
-    document.getElementById('pagoFecha').valueAsDate = new Date();
-    document.getElementById('pagoNotas').value = '';
-    
-    document.getElementById('pagoMonto').addEventListener('input', function() {
-        const montoPago = parseFloat(this.value) || 0;
-        const nuevoSaldo = saldoPendiente - montoPago;
-        document.getElementById('saldoDespuesProv').textContent = nuevoSaldo.toFixed(2);
-    });
-    
-    document.getElementById('saldoDespuesProv').textContent = saldoPendiente.toFixed(2);
-    
-    pagoProveedorModal.classList.add('active');
-}
-
 // Ver abonos de una cobranza
 function verAbonos(cobranzaId) {
     const cobranza = cobranzas.find(c => c.id === cobranzaId);
@@ -1411,676 +2144,35 @@ function verPagosProveedor(proveedorId) {
     });
 }
 
-// Actualizar estadísticas del dashboard
-function updateDashboardStats() {
-    // Estadísticas de cobranzas
-    const pending = cobranzas.filter(c => {
-        const saldoPendiente = c.saldoPendiente || calcularSaldoPendiente(c);
-        return c.estado !== 'pagado' && saldoPendiente > 0;
-    }).length;
-    
-    const paid = cobranzas.filter(c => {
-        const saldoPendiente = c.saldoPendiente || calcularSaldoPendiente(c);
-        return c.estado === 'pagado' || saldoPendiente <= 0;
-    }).length;
-    
-    const overdue = cobranzas.filter(c => {
-        const today = new Date();
-        const dueDate = new Date(c.fechaVencimiento);
-        const saldoPendiente = c.saldoPendiente || calcularSaldoPendiente(c);
-        return c.estado !== 'pagado' && saldoPendiente > 0 && dueDate < today;
-    }).length;
-    
-    const totalAmount = cobranzas
-        .filter(c => {
-            const saldoPendiente = c.saldoPendiente || calcularSaldoPendiente(c);
-            return c.estado !== 'pagado' && saldoPendiente > 0;
-        })
-        .reduce((sum, c) => sum + (c.saldoPendiente || calcularSaldoPendiente(c)), 0);
-    
-    // Estadísticas de proveedores
-    const proveedoresCount = proveedores.length;
-    
-    const totalPagos = proveedores
-        .filter(p => {
-            const saldoPendiente = p.saldoPendiente || calcularSaldoPendienteProveedor(p);
-            return p.estado !== 'pagado' && saldoPendiente > 0;
-        })
-        .reduce((sum, p) => sum + (p.saldoPendiente || calcularSaldoPendienteProveedor(p)), 0);
-    
-    document.getElementById('pendingCount').textContent = pending;
-    document.getElementById('paidCount').textContent = paid;
-    document.getElementById('overdueCount').textContent = overdue;
-    document.getElementById('proveedoresCount').textContent = proveedoresCount;
-    document.getElementById('totalAmount').textContent = `$${totalAmount.toFixed(2)}`;
-    document.getElementById('totalPagos').textContent = `$${totalPagos.toFixed(2)}`;
-    
-    updateStatusChart(pending, paid, overdue);
-}
-
-// Actualizar gráfico de estados
-function updateStatusChart(pending, paid, overdue) {
-    const ctx = document.getElementById('statusChart');
-    if (!ctx) return;
-    
-    if (statusChart) {
-        statusChart.destroy();
-    }
-    
-    statusChart = new Chart(ctx.getContext('2d'), {
-        type: 'doughnut',
-        data: {
-            labels: ['Pendientes', 'Pagadas', 'Vencidas'],
-            datasets: [{
-                data: [pending, paid, overdue],
-                backgroundColor: [
-                    'rgba(255, 149, 0, 0.7)',
-                    'rgba(52, 199, 89, 0.7)',
-                    'rgba(255, 59, 48, 0.7)'
-                ],
-                borderColor: [
-                    'rgba(255, 149, 0, 1)',
-                    'rgba(52, 199, 89, 1)',
-                    'rgba(255, 59, 48, 1)'
-                ],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
-    });
-}
-
-// Mostrar aplicación (usuario autenticado)
-function showApp() {
-    authContainer.style.display = 'none';
-    dashboard.style.display = 'block';
-    userInfo.style.display = 'flex';
-    loginBtn.style.display = 'none';
-    registerBtn.style.display = 'none';
-    logoutBtn.style.display = 'block';
-    
-    setupNavigation();
-    setupModals();
-    setupForms();
-    setupTabs();
-}
-
-// Mostrar autenticación (usuario no autenticado)
-function showAuth() {
-    authContainer.style.display = 'flex';
-    loginCard.style.display = 'block';
-    registerCard.style.display = 'none';
-    dashboard.style.display = 'none';
-    cobranzasSection.style.display = 'none';
-    proveedoresSection.style.display = 'none';
-    mensajesSection.style.display = 'none';
-    empresaSection.style.display = 'none';
-    adminSection.style.display = 'none';
-    userInfo.style.display = 'none';
-    loginBtn.style.display = 'inline-block';
-    registerBtn.style.display = 'inline-block';
-    logoutBtn.style.display = 'none';
-    
-    // Ocultar todas las secciones excepto auth
-    document.querySelectorAll('.dashboard, .admin-panel').forEach(section => {
-        section.style.display = 'none';
-    });
-}
-
-// Configurar navegación
-function setupNavigation() {
-    navLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            navLinks.forEach(l => l.classList.remove('active'));
-            this.classList.add('active');
-            
-            dashboard.style.display = 'none';
-            cobranzasSection.style.display = 'none';
-            proveedoresSection.style.display = 'none';
-            mensajesSection.style.display = 'none';
-            empresaSection.style.display = 'none';
-            adminSection.style.display = 'none';
-            
-            const target = this.getAttribute('data-target');
-            document.getElementById(target).style.display = 'block';
-            
-            if (target === 'admin') {
-                loadAdminData();
-            }
-        });
-    });
-}
-
-// Configurar modales
-function setupModals() {
-    if (addCobranzaBtn) {
-        addCobranzaBtn.addEventListener('click', openCobranzaModal);
-    }
-    if (addCobranzaBtn2) {
-        addCobranzaBtn2.addEventListener('click', openCobranzaModal);
-    }
-    if (addProveedorBtn) {
-        addProveedorBtn.addEventListener('click', openProveedorModal);
-    }
-    if (addProveedorBtn2) {
-        addProveedorBtn2.addEventListener('click', openProveedorModal);
-    }
-    if (addMessageBtn) {
-        addMessageBtn.addEventListener('click', openMessageModal);
-    }
-    
-    closeModals.forEach(btn => {
-        btn.addEventListener('click', function() {
-            cobranzaModal.classList.remove('active');
-            proveedorModal.classList.remove('active');
-            abonoModal.classList.remove('active');
-            pagoProveedorModal.classList.remove('active');
-            messageModal.classList.remove('active');
-            reciboModal.classList.remove('active');
-        });
-    });
-    
-    window.addEventListener('click', function(e) {
-        if (e.target === cobranzaModal) cobranzaModal.classList.remove('active');
-        if (e.target === proveedorModal) proveedorModal.classList.remove('active');
-        if (e.target === abonoModal) abonoModal.classList.remove('active');
-        if (e.target === pagoProveedorModal) pagoProveedorModal.classList.remove('active');
-        if (e.target === messageModal) messageModal.classList.remove('active');
-        if (e.target === reciboModal) reciboModal.classList.remove('active');
-    });
-    
-    if (printReciboBtn) {
-        printReciboBtn.addEventListener('click', function() {
-            const reciboContent = document.getElementById('reciboContent').innerHTML;
-            const ventana = window.open('', '_blank');
-            ventana.document.write(`
-                <html>
-                    <head>
-                        <title>Recibo de Cobranza</title>
-                        <style>
-                            body { font-family: Arial, sans-serif; padding: 20px; }
-                            .recibo-container { max-width: 600px; margin: 0 auto; }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="recibo-container">${reciboContent}</div>
-                    </body>
-                </html>
-            `);
-            ventana.document.close();
-            ventana.print();
-        });
-    }
-}
-
-// Configurar formularios
-function setupForms() {
-    // Formulario de empresa
-    if (companyForm) {
-        companyForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const companyData = {
-                userId: currentUser.uid,
-                nombre: document.getElementById('companyName').value,
-                rif: document.getElementById('companyRif').value,
-                telefono: document.getElementById('companyPhone').value,
-                email: document.getElementById('companyEmail').value,
-                contactos: document.getElementById('companyContacts').value,
-                fechaActualizacion: new Date().toISOString()
-            };
-            
-            database.ref('empresas/' + currentUser.uid).set(companyData)
-                .then(() => {
-                    showNotification('Datos de empresa guardados correctamente', 'success');
-                    loadCompanyData(currentUser.uid);
-                    registrarActividad('sistema', 'Datos de empresa actualizados', `Empresa: ${companyData.nombre}`);
-                })
-                .catch((error) => {
-                    showNotification('Error al guardar datos: ' + error.message, 'danger');
-                });
-        });
-    }
-    
-    // Formulario de cobranza - CORREGIDO: Evitar duplicación
-    let isSubmitting = false;
-    
-    if (cobranzaForm) {
-        cobranzaForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            if (isSubmitting) {
-                showNotification('Ya se está procesando la cobranza...', 'warning');
-                return;
-            }
-            
-            if (userData.plan === 'free' && cobranzas.length >= 3 && !cobranzaIdInput.value) {
-                showNotification('Has alcanzado el límite de 3 cobranzas para el plan Free. Contacta al administrador para actualizar a Pro.', 'warning');
-                return;
-            }
-            
-            // CORRECCIÓN: Formatear teléfono manteniendo guiones para display pero guardando limpio
-            let telefono = document.getElementById('clientPhone').value;
-            // Guardar con código de país pero sin guiones para consistencia
-            let telefonoLimpio = telefono.replace(/-/g, '');
-            if (telefonoLimpio && !telefonoLimpio.startsWith('+58')) {
-                telefonoLimpio = '+58' + telefonoLimpio;
-            }
-            
-            const cobranzaData = {
-                userId: currentUser.uid,
-                cliente: document.getElementById('clientName').value,
-                telefono: telefonoLimpio,
-                email: document.getElementById('clientEmail').value,
-                monto: parseFloat(document.getElementById('amount').value),
-                fechaEmision: document.getElementById('issueDate').value,
-                fechaVencimiento: document.getElementById('dueDate').value,
-                estado: 'pendiente',
-                notas: document.getElementById('notes').value,
-                fechaCreacion: new Date().toISOString(),
-                saldoPendiente: parseFloat(document.getElementById('amount').value)
-            };
-            
-            isSubmitting = true;
-            cobranzaSubmitBtn.disabled = true;
-            cobranzaSubmitBtn.textContent = 'Guardando...';
-            
-            if (cobranzaIdInput.value) {
-                database.ref('cobranzas/' + cobranzaIdInput.value).update(cobranzaData)
-                    .then(() => {
-                        showNotification('Cobranza actualizada correctamente', 'success');
-                        cobranzaForm.reset();
-                        cobranzaModal.classList.remove('active');
-                        cobranzaIdInput.value = '';
-                        cobranzaModalTitle.textContent = 'Nueva Cobranza';
-                        cobranzaSubmitBtn.textContent = 'Guardar Cobranza';
-                        registrarActividad('cobranza', `Cobranza actualizada - ${cobranzaData.cliente}`, `Monto: $${cobranzaData.monto}`);
-                    })
-                    .catch((error) => {
-                        showNotification('Error al actualizar cobranza: ' + error.message, 'danger');
-                    })
-                    .finally(() => {
-                        isSubmitting = false;
-                        cobranzaSubmitBtn.disabled = false;
-                    });
-            } else {
-                database.ref('cobranzas').push(cobranzaData)
-                    .then(() => {
-                        showNotification('Cobranza agregada correctamente', 'success');
-                        cobranzaForm.reset();
-                        cobranzaModal.classList.remove('active');
-                        registrarActividad('cobranza', `Nueva cobranza creada - ${cobranzaData.cliente}`, `Monto: $${cobranzaData.monto}, Vence: ${formatDate(cobranzaData.fechaVencimiento)}`);
-                    })
-                    .catch((error) => {
-                        showNotification('Error al agregar cobranza: ' + error.message, 'danger');
-                    })
-                    .finally(() => {
-                        isSubmitting = false;
-                        cobranzaSubmitBtn.disabled = false;
-                        cobranzaSubmitBtn.textContent = 'Guardar Cobranza';
-                    });
-            }
-        });
-    }
-    
-    // Formulario de proveedor
-    if (proveedorForm) {
-        proveedorForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            let telefono = document.getElementById('proveedorPhone').value;
-            let telefonoLimpio = telefono.replace(/-/g, '');
-            if (telefonoLimpio && !telefonoLimpio.startsWith('+58')) {
-                telefonoLimpio = '+58' + telefonoLimpio;
-            }
-            
-            const proveedorData = {
-                userId: currentUser.uid,
-                nombre: document.getElementById('proveedorName').value,
-                contacto: document.getElementById('proveedorContact').value,
-                telefono: telefonoLimpio,
-                email: document.getElementById('proveedorEmail').value,
-                concepto: document.getElementById('proveedorConcepto').value,
-                monto: parseFloat(document.getElementById('proveedorMonto').value),
-                fechaEmision: document.getElementById('proveedorIssueDate').value,
-                fechaVencimiento: document.getElementById('proveedorDueDate').value,
-                estado: 'pendiente',
-                notas: document.getElementById('proveedorNotes').value,
-                fechaCreacion: new Date().toISOString(),
-                saldoPendiente: parseFloat(document.getElementById('proveedorMonto').value)
-            };
-            
-            if (proveedorIdInput.value) {
-                database.ref('proveedores/' + proveedorIdInput.value).update(proveedorData)
-                    .then(() => {
-                        showNotification('Proveedor actualizado correctamente', 'success');
-                        proveedorForm.reset();
-                        proveedorModal.classList.remove('active');
-                        proveedorIdInput.value = '';
-                        proveedorModalTitle.textContent = 'Nuevo Proveedor';
-                        registrarActividad('proveedor', `Proveedor actualizado - ${proveedorData.nombre}`, `Monto: $${proveedorData.monto}`);
-                    })
-                    .catch((error) => {
-                        showNotification('Error al actualizar proveedor: ' + error.message, 'danger');
-                    });
-            } else {
-                database.ref('proveedores').push(proveedorData)
-                    .then(() => {
-                        showNotification('Proveedor agregado correctamente', 'success');
-                        proveedorForm.reset();
-                        proveedorModal.classList.remove('active');
-                        registrarActividad('proveedor', `Nuevo proveedor creado - ${proveedorData.nombre}`, `Monto: $${proveedorData.monto}, Vence: ${formatDate(proveedorData.fechaVencimiento)}`);
-                    })
-                    .catch((error) => {
-                        showNotification('Error al agregar proveedor: ' + error.message, 'danger');
-                    });
-            }
-        });
-    }
-    
-    // Formulario de abono
-    if (abonoForm) {
-        abonoForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const cobranzaId = document.getElementById('abonoCobranzaId').value;
-            const cobranza = cobranzas.find(c => c.id === cobranzaId);
-            
-            if (!cobranza) {
-                showNotification('Cobranza no encontrada', 'danger');
-                return;
-            }
-            
-            const abonoData = {
-                cobranzaId: cobranzaId,
-                userId: currentUser.uid,
-                monto: parseFloat(document.getElementById('abonoMonto').value),
-                fecha: document.getElementById('abonoFecha').value,
-                notas: document.getElementById('abonoNotas').value,
-                fechaRegistro: new Date().toISOString()
-            };
-            
-            database.ref('abonos').push(abonoData)
-                .then(() => {
-                    // Actualizar saldo pendiente en la cobranza
-                    const nuevoSaldo = calcularSaldoPendiente(cobranza) - abonoData.monto;
-                    database.ref('cobranzas/' + cobranzaId).update({
-                        saldoPendiente: nuevoSaldo
-                    })
-                    .then(() => {
-                        showNotification('Abono registrado correctamente', 'success');
-                        abonoForm.reset();
-                        abonoModal.classList.remove('active');
-                        
-                        // Registrar actividad
-                        registrarActividad('abono', `Abono registrado - ${cobranza.cliente}`, `Monto: $${abonoData.monto}, Nuevo saldo: $${nuevoSaldo.toFixed(2)}`);
-                        
-                        // Si el saldo llega a cero, marcar como pagado
-                        if (nuevoSaldo <= 0) {
-                            database.ref('cobranzas/' + cobranzaId).update({
-                                estado: 'pagado'
-                            }).then(() => {
-                                registrarActividad('pago', `Cobranza pagada completamente - ${cobranza.cliente}`);
-                            });
-                        }
-                    });
-                })
-                .catch((error) => {
-                    showNotification('Error al registrar abono: ' + error.message, 'danger');
-                });
-        });
-    }
-    
-    // Formulario de pago a proveedor
-    if (pagoProveedorForm) {
-        pagoProveedorForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const proveedorId = document.getElementById('pagoProveedorId').value;
-            const proveedor = proveedores.find(p => p.id === proveedorId);
-            
-            if (!proveedor) {
-                showNotification('Proveedor no encontrado', 'danger');
-                return;
-            }
-            
-            const pagoData = {
-                proveedorId: proveedorId,
-                userId: currentUser.uid,
-                monto: parseFloat(document.getElementById('pagoMonto').value),
-                fecha: document.getElementById('pagoFecha').value,
-                notas: document.getElementById('pagoNotas').value,
-                fechaRegistro: new Date().toISOString()
-            };
-            
-            database.ref('pagosProveedores').push(pagoData)
-                .then(() => {
-                    // Actualizar saldo pendiente en el proveedor
-                    const nuevoSaldo = calcularSaldoPendienteProveedor(proveedor) - pagoData.monto;
-                    database.ref('proveedores/' + proveedorId).update({
-                        saldoPendiente: nuevoSaldo
-                    })
-                    .then(() => {
-                        showNotification('Pago registrado correctamente', 'success');
-                        pagoProveedorForm.reset();
-                        pagoProveedorModal.classList.remove('active');
-                        
-                        // Registrar actividad
-                        registrarActividad('pago_proveedor', `Pago registrado - ${proveedor.nombre}`, `Monto: $${pagoData.monto}, Nuevo saldo: $${nuevoSaldo.toFixed(2)}`);
-                        
-                        // Si el saldo llega a cero, marcar como pagado
-                        if (nuevoSaldo <= 0) {
-                            database.ref('proveedores/' + proveedorId).update({
-                                estado: 'pagado'
-                            }).then(() => {
-                                registrarActividad('pago', `Proveedor pagado completamente - ${proveedor.nombre}`);
-                            });
-                        }
-                    });
-                })
-                .catch((error) => {
-                    showNotification('Error al registrar pago: ' + error.message, 'danger');
-                });
-        });
-    }
-    
-    // Formulario de mensaje
-    if (messageForm) {
-        messageForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const clientId = document.getElementById('messageClient').value;
-            const client = cobranzas.find(c => c.id === clientId);
-            
-            if (!client) {
-                showNotification('Cliente no encontrado', 'danger');
-                return;
-            }
-            
-            const messageType = document.getElementById('messageType').value;
-            const messageContent = document.getElementById('messageContent').value;
-            const channel = document.getElementById('messageChannel').value;
-            
-            const messageData = {
-                userId: currentUser.uid,
-                tipo: messageType,
-                contenido: messageContent,
-                cliente: client.cliente,
-                clienteId: clientId,
-                canal: channel,
-                fechaEnvio: new Date().toISOString(),
-                estado: 'pendiente'
-            };
-            
-            // Enviar mensaje por WhatsApp si está seleccionado
-            if (channel === 'whatsapp') {
-                if (enviarWhatsApp(client, messageContent)) {
-                    messageData.estado = 'enviado';
-                    showNotification('Mensaje enviado por WhatsApp', 'success');
-                    registrarActividad('mensaje', `Mensaje WhatsApp enviado - ${client.cliente}`, `Tipo: ${messageType}`);
-                }
-            } else if (channel === 'email') {
-                // Copiar mensaje al portapapeles para email
-                copyToClipboard(messageContent);
-                showNotification('Mensaje copiado al portapapeles. Péguelo en su cliente de email.', 'success');
-                registrarActividad('mensaje', `Mensaje Email preparado - ${client.cliente}`, `Tipo: ${messageType} - Mensaje copiado al portapapeles`);
-            }
-            
-            database.ref('mensajes').push(messageData)
-                .then(() => {
-                    messageForm.reset();
-                    messageModal.classList.remove('active');
-                })
-                .catch((error) => {
-                    showNotification('Error al guardar mensaje: ' + error.message, 'danger');
-                });
-        });
-        
-        // Cambiar contenido del mensaje según el tipo seleccionado
-        document.getElementById('messageType').addEventListener('change', function() {
-            const type = this.value;
-            let content = '';
-            
-            if (type === 'recordatorio_amable') {
-                content = 'Hola {cliente}, desde {empresa} te recordamos que tu pago de {monto} vence el {vencimiento}. Contáctanos: {telefono}.';
-            } else if (type === 'recordatorio_cercano') {
-                content = 'Hola {cliente}, tu pago de {monto} con {empresa} vence hoy ({vencimiento}). Agradecemos tu pronta atención.';
-            } else if (type === 'vencido_leve') {
-                content = 'Hola {cliente}, tu pago de {monto} con {empresa} está vencido desde {vencimiento}. Por favor realiza tu pago cuanto antes.';
-            } else if (type === 'ultima_advertencia') {
-                content = 'Estimado {cliente}, tu pago de {monto} con {empresa} está vencido desde {vencimiento}. Esta es la última notificación antes de tomar medidas. Contáctanos: {telefono}.';
-            }
-            
-            if (content && document.getElementById('messageClient').value) {
-                const clientId = document.getElementById('messageClient').value;
-                const client = cobranzas.find(c => c.id === clientId);
-                
-                if (client && companyData) {
-                    content = content
-                        .replace('{cliente}', client.cliente)
-                        .replace('{empresa}', companyData.nombre)
-                        .replace('{monto}', `$${client.monto}`)
-                        .replace('{vencimiento}', formatDate(client.fechaVencimiento))
-                        .replace('{telefono}', companyData.telefono);
-                }
-            }
-            
-            document.getElementById('messageContent').value = content;
-        });
-        
-        document.getElementById('messageClient').addEventListener('change', function() {
-            const type = document.getElementById('messageType').value;
-            if (type && type !== 'personalizado') {
-                document.getElementById('messageType').dispatchEvent(new Event('change'));
-            }
-        });
-    }
-}
-
-// Configurar tabs
-function setupTabs() {
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            const tabType = this.getAttribute('data-tab');
-            
-            if (tabType.includes('prov')) {
-                // Tabs de proveedores
-                tabs.forEach(t => {
-                    if (t.getAttribute('data-tab').includes('prov')) {
-                        t.classList.remove('active');
-                    }
-                });
-                this.classList.add('active');
-                currentTabProv = tabType;
-                updateProveedoresUI();
-            } else {
-                // Tabs de cobranzas
-                tabs.forEach(t => {
-                    if (!t.getAttribute('data-tab').includes('prov')) {
-                        t.classList.remove('active');
-                    }
-                });
-                this.classList.add('active');
-                currentTab = tabType;
-                updateCobranzasUI();
-            }
-        });
-    });
-}
-
-// Abrir modal de cobranza
-function openCobranzaModal() {
-    document.getElementById('issueDate').valueAsDate = new Date();
-    
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 30);
-    document.getElementById('dueDate').valueAsDate = dueDate;
-    
-    cobranzaForm.reset();
-    cobranzaIdInput.value = '';
-    cobranzaModalTitle.textContent = 'Nueva Cobranza';
-    cobranzaSubmitBtn.textContent = 'Guardar Cobranza';
-    cobranzaSubmitBtn.disabled = false;
-    
-    cobranzaModal.classList.add('active');
-}
-
-// Abrir modal de proveedor
-function openProveedorModal() {
-    document.getElementById('proveedorIssueDate').valueAsDate = new Date();
-    
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 30);
-    document.getElementById('proveedorDueDate').valueAsDate = dueDate;
-    
-    proveedorForm.reset();
-    proveedorIdInput.value = '';
-    proveedorModalTitle.textContent = 'Nuevo Proveedor';
-    proveedorSubmitBtn.textContent = 'Guardar Proveedor';
-    
-    proveedorModal.classList.add('active');
-}
-
 // Editar cobranza
 function editCobranza(cobranzaId) {
     const cobranza = cobranzas.find(c => c.id === cobranzaId);
     if (!cobranza) return;
     
-    document.getElementById('clientName').value = cobranza.cliente;
+    if (document.getElementById('clientName')) document.getElementById('clientName').value = cobranza.cliente;
     
-    // CORRECCIÓN: Mostrar teléfono formateado correctamente
+    // Formatear teléfono
     let telefono = cobranza.telefono || '';
     if (telefono.startsWith('+58')) {
-        telefono = telefono.substring(3); // Remover +58
+        telefono = telefono.substring(3);
     }
-    // Formatear como 412-1234567 (solo números y un guión)
-    telefono = telefono.replace(/\D/g, ''); // Solo números
+    telefono = telefono.replace(/\D/g, '');
     if (telefono.length > 3) {
         telefono = telefono.substring(0, 3) + '-' + telefono.substring(3);
     }
-    document.getElementById('clientPhone').value = telefono;
+    if (document.getElementById('clientPhone')) document.getElementById('clientPhone').value = telefono;
     
-    document.getElementById('clientEmail').value = cobranza.email || '';
-    document.getElementById('amount').value = cobranza.monto;
-    document.getElementById('issueDate').value = cobranza.fechaEmision;
-    document.getElementById('dueDate').value = cobranza.fechaVencimiento;
-    document.getElementById('notes').value = cobranza.notas || '';
+    if (document.getElementById('clientEmail')) document.getElementById('clientEmail').value = cobranza.email || '';
+    if (document.getElementById('amount')) document.getElementById('amount').value = cobranza.monto;
+    if (document.getElementById('issueDate')) document.getElementById('issueDate').value = cobranza.fechaEmision;
+    if (document.getElementById('dueDate')) document.getElementById('dueDate').value = cobranza.fechaVencimiento;
+    if (document.getElementById('notes')) document.getElementById('notes').value = cobranza.notas || '';
     
-    cobranzaIdInput.value = cobranzaId;
-    cobranzaModalTitle.textContent = 'Editar Cobranza';
-    cobranzaSubmitBtn.textContent = 'Actualizar Cobranza';
+    if (cobranzaIdInput) cobranzaIdInput.value = cobranzaId;
+    if (cobranzaModalTitle) cobranzaModalTitle.textContent = 'Editar Cobranza';
+    if (cobranzaSubmitBtn) cobranzaSubmitBtn.textContent = 'Actualizar Cobranza';
     
-    cobranzaModal.classList.add('active');
+    if (cobranzaModal) cobranzaModal.classList.add('active');
 }
 
 // Editar proveedor
@@ -2088,8 +2180,8 @@ function editProveedor(proveedorId) {
     const proveedor = proveedores.find(p => p.id === proveedorId);
     if (!proveedor) return;
     
-    document.getElementById('proveedorName').value = proveedor.nombre;
-    document.getElementById('proveedorContact').value = proveedor.contacto || '';
+    if (document.getElementById('proveedorName')) document.getElementById('proveedorName').value = proveedor.nombre;
+    if (document.getElementById('proveedorContact')) document.getElementById('proveedorContact').value = proveedor.contacto || '';
     
     // Formatear teléfono
     let telefono = proveedor.telefono || '';
@@ -2100,94 +2192,110 @@ function editProveedor(proveedorId) {
     if (telefono.length > 3) {
         telefono = telefono.substring(0, 3) + '-' + telefono.substring(3);
     }
-    document.getElementById('proveedorPhone').value = telefono;
+    if (document.getElementById('proveedorPhone')) document.getElementById('proveedorPhone').value = telefono;
     
-    document.getElementById('proveedorEmail').value = proveedor.email || '';
-    document.getElementById('proveedorConcepto').value = proveedor.concepto;
-    document.getElementById('proveedorMonto').value = proveedor.monto;
-    document.getElementById('proveedorIssueDate').value = proveedor.fechaEmision;
-    document.getElementById('proveedorDueDate').value = proveedor.fechaVencimiento;
-    document.getElementById('proveedorNotes').value = proveedor.notas || '';
+    if (document.getElementById('proveedorEmail')) document.getElementById('proveedorEmail').value = proveedor.email || '';
+    if (document.getElementById('proveedorConcepto')) document.getElementById('proveedorConcepto').value = proveedor.concepto;
+    if (document.getElementById('proveedorMonto')) document.getElementById('proveedorMonto').value = proveedor.monto;
+    if (document.getElementById('proveedorIssueDate')) document.getElementById('proveedorIssueDate').value = proveedor.fechaEmision;
+    if (document.getElementById('proveedorDueDate')) document.getElementById('proveedorDueDate').value = proveedor.fechaVencimiento;
+    if (document.getElementById('proveedorNotes')) document.getElementById('proveedorNotes').value = proveedor.notas || '';
     
-    proveedorIdInput.value = proveedorId;
-    proveedorModalTitle.textContent = 'Editar Proveedor';
-    proveedorSubmitBtn.textContent = 'Actualizar Proveedor';
+    if (proveedorIdInput) proveedorIdInput.value = proveedorId;
+    if (proveedorModalTitle) proveedorModalTitle.textContent = 'Editar Proveedor';
+    if (proveedorSubmitBtn) proveedorSubmitBtn.textContent = 'Actualizar Proveedor';
     
-    proveedorModal.classList.add('active');
+    if (proveedorModal) proveedorModal.classList.add('active');
 }
 
-// Abrir modal de mensaje
-function openMessageModal() {
-    const clientSelect = document.getElementById('messageClient');
-    clientSelect.innerHTML = '<option value="">Selecciona un cliente</option>';
-    
-    cobranzas.forEach(cobranza => {
-        const saldoPendiente = cobranza.saldoPendiente || calcularSaldoPendiente(cobranza);
-        if (cobranza.estado !== 'pagado' && saldoPendiente > 0) {
-            const option = document.createElement('option');
-            option.value = cobranza.id;
-            option.textContent = `${cobranza.cliente} - $${cobranza.monto}`;
-            clientSelect.appendChild(option);
-        }
-    });
-    
-    messageModal.classList.add('active');
-}
-
-// Abrir modal de mensaje para una cobranza específica
-function openMessageModalForCobranza(cobranzaId) {
-    openMessageModal();
-    document.getElementById('messageClient').value = cobranzaId;
-    
-    const cobranza = cobranzas.find(c => c.id === cobranzaId);
-    if (cobranza) {
-        const today = new Date();
-        const dueDate = new Date(cobranza.fechaVencimiento);
-        const diffTime = dueDate.getTime() - today.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        let messageType = 'recordatorio_amable';
-        
-        if (diffDays < 0) {
-            const daysOverdue = Math.abs(diffDays);
-            if (daysOverdue > 15) {
-                messageType = 'ultima_advertencia';
-            } else {
-                messageType = 'vencido_leve';
-            }
-        } else if (diffDays === 0) {
-            messageType = 'recordatorio_cercano';
-        }
-        
-        document.getElementById('messageType').value = messageType;
-        document.getElementById('messageType').dispatchEvent(new Event('change'));
+// Marcar cobranza como pagada
+function markAsPaid(cobranzaId) {
+    if (confirm('¿Estás seguro de que quieres marcar esta cobranza como pagada?')) {
+        const cobranza = cobranzas.find(c => c.id === cobranzaId);
+        database.ref('cobranzas/' + cobranzaId).update({
+            estado: 'pagado',
+            saldoPendiente: 0
+        })
+        .then(() => {
+            showNotification('Cobranza marcada como pagada', 'success');
+            registrarActividad('pago', `Cobranza marcada como pagada - ${cobranza.cliente}`, `Monto: $${cobranza.monto}`);
+        })
+        .catch((error) => {
+            showNotification('Error al actualizar cobranza: ' + error.message, 'danger');
+        });
     }
 }
 
-// Enviar mensaje por WhatsApp - CORREGIDO: No abrir nueva pestaña si ya está abierta
-function enviarWhatsApp(cliente, mensaje) {
-    const telefono = cliente.telefono;
-    if (!telefono) {
-        showNotification('El cliente no tiene número de teléfono registrado', 'warning');
-        return false;
+// Marcar proveedor como pagado
+function markProveedorAsPaid(proveedorId) {
+    if (confirm('¿Estás seguro de que quieres marcar este proveedor como pagado?')) {
+        const proveedor = proveedores.find(p => p.id === proveedorId);
+        database.ref('proveedores/' + proveedorId).update({
+            estado: 'pagado',
+            saldoPendiente: 0
+        })
+        .then(() => {
+            showNotification('Proveedor marcado como pagado', 'success');
+            registrarActividad('pago', `Proveedor marcado como pagado - ${proveedor.nombre}`, `Monto: $${proveedor.monto}`);
+        })
+        .catch((error) => {
+            showNotification('Error al actualizar proveedor: ' + error.message, 'danger');
+        });
     }
-    
-    // Asegurarse de que el teléfono tenga el formato correcto
-    let telefonoLimpio = telefono.replace(/\D/g, '');
-    if (telefonoLimpio.startsWith('58')) {
-        telefonoLimpio = telefonoLimpio;
-    } else if (telefonoLimpio.startsWith('0')) {
-        telefonoLimpio = '58' + telefonoLimpio.substring(1);
-    } else {
-        telefonoLimpio = '58' + telefonoLimpio;
+}
+
+// Eliminar cobranza
+function deleteCobranza(cobranzaId) {
+    if (confirm('¿Estás seguro de que quieres eliminar esta cobranza?')) {
+        const cobranza = cobranzas.find(c => c.id === cobranzaId);
+        // Primero eliminar todos los abonos asociados
+        database.ref('abonos').orderByChild('cobranzaId').equalTo(cobranzaId).once('value')
+            .then((snapshot) => {
+                const promises = [];
+                snapshot.forEach((childSnapshot) => {
+                    promises.push(database.ref('abonos/' + childSnapshot.key).remove());
+                });
+                return Promise.all(promises);
+            })
+            .then(() => {
+                // Luego eliminar la cobranza
+                return database.ref('cobranzas/' + cobranzaId).remove();
+            })
+            .then(() => {
+                showNotification('Cobranza eliminada', 'success');
+                registrarActividad('sistema', `Cobranza eliminada - ${cobranza.cliente}`, `Monto: $${cobranza.monto}`);
+            })
+            .catch((error) => {
+                showNotification('Error al eliminar cobranza: ' + error.message, 'danger');
+            });
     }
-    
-    const mensajeCodificado = encodeURIComponent(mensaje);
-    const whatsappURL = `https://web.whatsapp.com/send?phone=${telefonoLimpio}&text=${mensajeCodificado}`;
-    
-    // Intentar abrir en la misma pestaña si es posible
-    window.open(whatsappURL, '_self').focus();
-    return true;
+}
+
+// Eliminar proveedor
+function deleteProveedor(proveedorId) {
+    if (confirm('¿Estás seguro de que quieres eliminar este proveedor?')) {
+        const proveedor = proveedores.find(p => p.id === proveedorId);
+        // Primero eliminar todos los pagos asociados
+        database.ref('pagosProveedores').orderByChild('proveedorId').equalTo(proveedorId).once('value')
+            .then((snapshot) => {
+                const promises = [];
+                snapshot.forEach((childSnapshot) => {
+                    promises.push(database.ref('pagosProveedores/' + childSnapshot.key).remove());
+                });
+                return Promise.all(promises);
+            })
+            .then(() => {
+                // Luego eliminar el proveedor
+                return database.ref('proveedores/' + proveedorId).remove();
+            })
+            .then(() => {
+                showNotification('Proveedor eliminado', 'success');
+                registrarActividad('sistema', `Proveedor eliminado - ${proveedor.nombre}`, `Monto: $${proveedor.monto}`);
+            })
+            .catch((error) => {
+                showNotification('Error al eliminar proveedor: ' + error.message, 'danger');
+            });
+    }
 }
 
 // Generar recibo
@@ -2196,6 +2304,8 @@ function generateRecibo(cobranzaId) {
     if (!cobranza) return;
     
     const reciboContent = document.getElementById('reciboContent');
+    if (!reciboContent) return;
+    
     const today = new Date();
     const dueDate = new Date(cobranza.fechaVencimiento);
     const diffTime = dueDate.getTime() - today.getTime();
@@ -2295,97 +2405,94 @@ function generateRecibo(cobranzaId) {
         </div>
     `;
     
-    reciboModal.classList.add('active');
+    if (reciboModal) reciboModal.classList.add('active');
 }
 
-// Marcar cobranza como pagada
-function markAsPaid(cobranzaId) {
-    if (confirm('¿Estás seguro de que quieres marcar esta cobranza como pagada?')) {
-        const cobranza = cobranzas.find(c => c.id === cobranzaId);
-        database.ref('cobranzas/' + cobranzaId).update({
-            estado: 'pagado',
-            saldoPendiente: 0
+// Actualizar estadísticas del dashboard
+function updateDashboardStats() {
+    // Estadísticas de cobranzas
+    const pending = cobranzas.filter(c => {
+        const saldoPendiente = c.saldoPendiente || calcularSaldoPendiente(c);
+        return c.estado !== 'pagado' && saldoPendiente > 0;
+    }).length;
+    
+    const paid = cobranzas.filter(c => {
+        const saldoPendiente = c.saldoPendiente || calcularSaldoPendiente(c);
+        return c.estado === 'pagado' || saldoPendiente <= 0;
+    }).length;
+    
+    const overdue = cobranzas.filter(c => {
+        const today = new Date();
+        const dueDate = new Date(c.fechaVencimiento);
+        const saldoPendiente = c.saldoPendiente || calcularSaldoPendiente(c);
+        return c.estado !== 'pagado' && saldoPendiente > 0 && dueDate < today;
+    }).length;
+    
+    const totalAmount = cobranzas
+        .filter(c => {
+            const saldoPendiente = c.saldoPendiente || calcularSaldoPendiente(c);
+            return c.estado !== 'pagado' && saldoPendiente > 0;
         })
-        .then(() => {
-            showNotification('Cobranza marcada como pagada', 'success');
-            registrarActividad('pago', `Cobranza marcada como pagada - ${cobranza.cliente}`, `Monto: $${cobranza.monto}`);
+        .reduce((sum, c) => sum + (c.saldoPendiente || calcularSaldoPendiente(c)), 0);
+    
+    // Estadísticas de proveedores
+    const proveedoresCount = proveedores.length;
+    
+    const totalPagos = proveedores
+        .filter(p => {
+            const saldoPendiente = p.saldoPendiente || calcularSaldoPendienteProveedor(p);
+            return p.estado !== 'pagado' && saldoPendiente > 0;
         })
-        .catch((error) => {
-            showNotification('Error al actualizar cobranza: ' + error.message, 'danger');
-        });
-    }
+        .reduce((sum, p) => sum + (p.saldoPendiente || calcularSaldoPendienteProveedor(p)), 0);
+    
+    if (document.getElementById('pendingCount')) document.getElementById('pendingCount').textContent = pending;
+    if (document.getElementById('paidCount')) document.getElementById('paidCount').textContent = paid;
+    if (document.getElementById('overdueCount')) document.getElementById('overdueCount').textContent = overdue;
+    if (document.getElementById('proveedoresCount')) document.getElementById('proveedoresCount').textContent = proveedoresCount;
+    if (document.getElementById('totalAmount')) document.getElementById('totalAmount').textContent = `$${totalAmount.toFixed(2)}`;
+    if (document.getElementById('totalPagos')) document.getElementById('totalPagos').textContent = `$${totalPagos.toFixed(2)}`;
+    
+    updateStatusChart(pending, paid, overdue);
 }
 
-// Marcar proveedor como pagado
-function markProveedorAsPaid(proveedorId) {
-    if (confirm('¿Estás seguro de que quieres marcar este proveedor como pagado?')) {
-        const proveedor = proveedores.find(p => p.id === proveedorId);
-        database.ref('proveedores/' + proveedorId).update({
-            estado: 'pagado',
-            saldoPendiente: 0
-        })
-        .then(() => {
-            showNotification('Proveedor marcado como pagado', 'success');
-            registrarActividad('pago', `Proveedor marcado como pagado - ${proveedor.nombre}`, `Monto: $${proveedor.monto}`);
-        })
-        .catch((error) => {
-            showNotification('Error al actualizar proveedor: ' + error.message, 'danger');
-        });
+// Actualizar gráfico de estados
+function updateStatusChart(pending, paid, overdue) {
+    const ctx = document.getElementById('statusChart');
+    if (!ctx) return;
+    
+    if (statusChart) {
+        statusChart.destroy();
     }
-}
-
-// Eliminar cobranza
-function deleteCobranza(cobranzaId) {
-    if (confirm('¿Estás seguro de que quieres eliminar esta cobranza?')) {
-        const cobranza = cobranzas.find(c => c.id === cobranzaId);
-        // Primero eliminar todos los abonos asociados
-        database.ref('abonos').orderByChild('cobranzaId').equalTo(cobranzaId).once('value')
-            .then((snapshot) => {
-                const promises = [];
-                snapshot.forEach((childSnapshot) => {
-                    promises.push(database.ref('abonos/' + childSnapshot.key).remove());
-                });
-                return Promise.all(promises);
-            })
-            .then(() => {
-                // Luego eliminar la cobranza
-                return database.ref('cobranzas/' + cobranzaId).remove();
-            })
-            .then(() => {
-                showNotification('Cobranza eliminada', 'success');
-                registrarActividad('sistema', `Cobranza eliminada - ${cobranza.cliente}`, `Monto: $${cobranza.monto}`);
-            })
-            .catch((error) => {
-                showNotification('Error al eliminar cobranza: ' + error.message, 'danger');
-            });
-    }
-}
-
-// Eliminar proveedor
-function deleteProveedor(proveedorId) {
-    if (confirm('¿Estás seguro de que quieres eliminar este proveedor?')) {
-        const proveedor = proveedores.find(p => p.id === proveedorId);
-        // Primero eliminar todos los pagos asociados
-        database.ref('pagosProveedores').orderByChild('proveedorId').equalTo(proveedorId).once('value')
-            .then((snapshot) => {
-                const promises = [];
-                snapshot.forEach((childSnapshot) => {
-                    promises.push(database.ref('pagosProveedores/' + childSnapshot.key).remove());
-                });
-                return Promise.all(promises);
-            })
-            .then(() => {
-                // Luego eliminar el proveedor
-                return database.ref('proveedores/' + proveedorId).remove();
-            })
-            .then(() => {
-                showNotification('Proveedor eliminado', 'success');
-                registrarActividad('sistema', `Proveedor eliminado - ${proveedor.nombre}`, `Monto: $${proveedor.monto}`);
-            })
-            .catch((error) => {
-                showNotification('Error al eliminar proveedor: ' + error.message, 'danger');
-            });
-    }
+    
+    statusChart = new Chart(ctx.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Pendientes', 'Pagadas', 'Vencidas'],
+            datasets: [{
+                data: [pending, paid, overdue],
+                backgroundColor: [
+                    'rgba(255, 149, 0, 0.7)',
+                    'rgba(52, 199, 89, 0.7)',
+                    'rgba(255, 59, 48, 0.7)'
+                ],
+                borderColor: [
+                    'rgba(255, 149, 0, 1)',
+                    'rgba(52, 199, 89, 1)',
+                    'rgba(255, 59, 48, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
 }
 
 // Cargar datos para el panel de administración
@@ -2403,7 +2510,7 @@ function loadAdminData() {
         })
         .catch((error) => {
             console.error('Error al cargar usuarios:', error);
-            adminConnectionAlert.style.display = 'flex';
+            if (adminConnectionAlert) adminConnectionAlert.style.display = 'flex';
         });
 }
 
@@ -2425,13 +2532,15 @@ function updateAdminUI(users) {
         return;
     }
     
-    document.getElementById('totalUsers').textContent = users.length;
-    document.getElementById('proUsers').textContent = users.filter(u => u.plan === 'pro').length;
-    document.getElementById('inactiveUsers').textContent = users.filter(u => !u.activo).length;
+    if (document.getElementById('totalUsers')) document.getElementById('totalUsers').textContent = users.length;
+    if (document.getElementById('proUsers')) document.getElementById('proUsers').textContent = users.filter(u => u.plan === 'pro').length;
+    if (document.getElementById('inactiveUsers')) document.getElementById('inactiveUsers').textContent = users.filter(u => !u.activo).length;
     
     database.ref('cobranzas').once('value')
         .then((snapshot) => {
-            document.getElementById('totalCobranzasAdmin').textContent = snapshot.numChildren();
+            if (document.getElementById('totalCobranzasAdmin')) {
+                document.getElementById('totalCobranzasAdmin').textContent = snapshot.numChildren();
+            }
         });
     
     users.forEach(user => {
@@ -2696,7 +2805,7 @@ if (refreshUsersBtn) {
     refreshUsersBtn.addEventListener('click', loadAdminData);
 }
 
-// Enlace para actualizar plan - CORREGIDO: Mensaje con información de contacto
+// Enlace para actualizar plan
 if (upgradePlanLink) {
     upgradePlanLink.addEventListener('click', function(e) {
         e.preventDefault();
@@ -2709,8 +2818,12 @@ if (upgradePlanLink) {
 // Enviar recibo por email
 if (sendReciboBtn) {
     sendReciboBtn.addEventListener('click', function() {
-        const reciboText = document.getElementById('reciboContent').innerText;
-        copyToClipboard(reciboText);
-        showNotification('Recibo copiado al portapapeles. Péguelo en su cliente de email.', 'success');
+        const reciboText = document.getElementById('reciboContent');
+        if (reciboText) {
+            copyToClipboard(reciboText.innerText);
+            showNotification('Recibo copiado al portapapeles. Péguelo en su cliente de email.', 'success');
+        }
     });
 }
+
+console.log("✅ app.js cargado correctamente");
