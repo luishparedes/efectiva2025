@@ -640,9 +640,15 @@ function checkCobranzaVencimientos(cobranza) {
     }
     
     const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalizar a medianoche
+    
     const dueDate = new Date(cobranza.fechaVencimiento);
+    dueDate.setHours(0, 0, 0, 0); // Normalizar a medianoche
+    
     const diffTime = dueDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    console.log(`📊 Cobranza ${cobranza.cliente}: Vence en ${diffDays} días`);
     
     // Notificar si vence en 3 días o está vencida
     if (diffDays <= 3 && diffDays >= 0) {
@@ -667,9 +673,15 @@ function checkProveedorVencimientos(proveedor) {
     }
     
     const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalizar a medianoche
+    
     const dueDate = new Date(proveedor.fechaVencimiento);
+    dueDate.setHours(0, 0, 0, 0); // Normalizar a medianoche
+    
     const diffTime = dueDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    console.log(`📊 Proveedor ${proveedor.nombre}: Vence en ${diffDays} días`);
     
     // Notificar si vence en 3 días o está vencido
     if (diffDays <= 3 && diffDays >= 0) {
@@ -836,8 +848,7 @@ function updateUpcomingList() {
     upcomingList.innerHTML = '';
     
     const today = new Date();
-    const nextWeek = new Date(today);
-    nextWeek.setDate(today.getDate() + 7);
+    today.setHours(0, 0, 0, 0); // Normalizar a medianoche
     
     let upcomingItems = [];
     
@@ -848,10 +859,13 @@ function updateUpcomingList() {
         }
         
         const dueDate = new Date(cobranza.fechaVencimiento);
-        if (dueDate >= today && dueDate <= nextWeek) {
-            const diffTime = dueDate.getTime() - today.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
+        dueDate.setHours(0, 0, 0, 0); // Normalizar a medianoche
+        
+        const diffTime = dueDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        // Mostrar cobranzas que vencen en los próximos 7 días
+        if (diffDays >= 0 && diffDays <= 7) {
             upcomingItems.push({
                 type: 'cobranza',
                 title: `Cobranza: ${cobranza.cliente}`,
@@ -870,10 +884,13 @@ function updateUpcomingList() {
         }
         
         const dueDate = new Date(proveedor.fechaVencimiento);
-        if (dueDate >= today && dueDate <= nextWeek) {
-            const diffTime = dueDate.getTime() - today.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
+        dueDate.setHours(0, 0, 0, 0); // Normalizar a medianoche
+        
+        const diffTime = dueDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        // Mostrar proveedores que vencen en los próximos 7 días
+        if (diffDays >= 0 && diffDays <= 7) {
             upcomingItems.push({
                 type: 'proveedor',
                 title: `Pago: ${proveedor.nombre}`,
@@ -885,8 +902,8 @@ function updateUpcomingList() {
         }
     });
     
-    // Ordenar por fecha más próxima
-    upcomingItems.sort((a, b) => a.date - b.date);
+    // Ordenar por días más próximos
+    upcomingItems.sort((a, b) => a.days - b.days);
     
     if (upcomingItems.length === 0) {
         upcomingList.innerHTML = `
