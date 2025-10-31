@@ -1740,8 +1740,8 @@ function enviarWhatsApp(cliente, mensaje) {
     const mensajeCodificado = encodeURIComponent(mensaje);
     const whatsappURL = `https://web.whatsapp.com/send?phone=${telefonoLimpio}&text=${mensajeCodificado}`;
     
-    // Intentar abrir en la misma pestaña si es posible
-    window.open(whatsappURL, '_self').focus();
+    // Abrir en una NUEVA pestaña en lugar de la misma
+    window.open(whatsappURL, '_blank');
     return true;
 }
 
