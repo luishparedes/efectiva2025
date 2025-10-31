@@ -1740,8 +1740,18 @@ function enviarWhatsApp(cliente, mensaje) {
     const mensajeCodificado = encodeURIComponent(mensaje);
     const whatsappURL = `https://web.whatsapp.com/send?phone=${telefonoLimpio}&text=${mensajeCodificado}`;
     
-    // Abrir en una NUEVA pestaña en lugar de la misma
-    window.open(whatsappURL, '_blank');
+    // Verificar si ya existe una pestaña de WhatsApp abierta
+    let whatsappWindow = window.open('', 'whatsappWindow');
+    
+    if (!whatsappWindow || whatsappWindow.closed || !whatsappWindow.location.href.includes('whatsapp')) {
+        // No existe pestaña de WhatsApp, abrir una nueva
+        whatsappWindow = window.open(whatsappURL, 'whatsappWindow');
+    } else {
+        // Ya existe pestaña de WhatsApp, reutilizarla
+        whatsappWindow.location.href = whatsappURL;
+        whatsappWindow.focus();
+    }
+    
     return true;
 }
 
