@@ -1835,7 +1835,9 @@ function updateCobranzasUI() {
         
         tr.innerHTML = `
             <td>
-                <strong>${cobranza.cliente}</strong>
+                <strong class="clickable-name" style="color: var(--primary); cursor: pointer; text-decoration: underline;" data-id="${cobranza.id}">
+                    ${cobranza.cliente}
+                </strong>
                 ${cobranza.abonos && cobranza.abonos.length > 0 ? 
                   `<br><small>${cobranza.abonos.length} abono(s)</small>` : ''}
             </td>
@@ -1898,6 +1900,148 @@ function updateCobranzasUI() {
                 generateRecibo(cobranzaId);
             }
         });
+    });
+
+    // AGREGAR ESTO: Event listeners para los nombres clickeables de clientes
+    document.querySelectorAll('.clickable-name').forEach(name => {
+        name.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            mostrarFichaCliente(id);
+        });
+    });
+}
+
+// Mostrar ficha completa del cliente
+function mostrarFichaCliente(cobranzaId) {
+    const cobranza = cobranzas.find(c => c.id === cobranzaId);
+    if (!cobranza) return;
+    
+    // Calcular estadísticas del cliente
+    const cobranzasCliente = cobranzas.filter(c => c.cliente === cobranza.cliente);
+    const totalCobranzas = cobranzasCliente.length;
+    const cobranzasPagadas = cobranzasCliente.filter(c => c.estado === 'pagado').length;
+    const tasaPago = totalCobranzas > 0 ? (cobranzasPagadas / totalCobranzas) * 100 : 0;
+    
+    // Calcular totales
+    const totalPrestado = cobranzasCliente.reduce((sum, c) => sum + parseFloat(c.monto), 0);
+    const totalPagado = cobranzasCliente
+        .filter(c => c.estado === 'pagado')
+        .reduce((sum, c) => sum + parseFloat(c.monto), 0);
+    
+    // Formatear teléfono para mostrar
+    let telefonoMostrar = cobranza.telefono || 'No registrado';
+    if (telefonoMostrar.startsWith('+58')) {
+        telefonoMostrar = telefonoMostrar.substring(3);
+    }
+    if (telefonoMostrar.length > 3) {
+        telefonoMostrar = telefonoMostrar.substring(0, 3) + '-' + telefonoMostrar.substring(3);
+    }
+    
+    const modalHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title">👤 Ficha de Cliente: ${cobranza.cliente}</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="ficha-section">
+                    <h4>📋 Información de Contacto</h4>
+                    <div class="ficha-grid">
+                        <div class="ficha-item">
+                            <label>Teléfono:</label>
+                            <span>${telefonoMostrar}</span>
+                        </div>
+                        <div class="ficha-item">
+                            <label>Email:</label>
+                            <span>${cobranza.email || 'No registrado'}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ficha-section">
+                    <h4>📊 Estadísticas del Cliente</h4>
+                    <div class="ficha-grid">
+                        <div class="ficha-item">
+                            <label>Total Cobranzas:</label>
+                            <span>${totalCobranzas}</span>
+                        </div>
+                        <div class="ficha-item">
+                            <label>Tasa de Pago:</label>
+                            <span>${tasaPago.toFixed(1)}%</span>
+                        </div>
+                        <div class="ficha-item">
+                            <label>Total Prestado:</label>
+                            <span>$${totalPrestado.toFixed(2)}</span>
+                        </div>
+                        <div class="ficha-item">
+                            <label>Total Pagado:</label>
+                            <span>$${totalPagado.toFixed(2)}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ficha-section">
+                    <h4>💰 Cobranzas Activas</h4>
+                    ${cobranzasCliente.filter(c => c.estado !== 'pagado' && c.saldoPendiente > 0).length > 0 ? 
+                        cobranzasCliente.filter(c => c.estado !== 'pagado' && c.saldoPendiente > 0).map(c => `
+                            <div class="cobranza-activa">
+                                <strong>$${c.monto}</strong> - Vence: ${formatDate(c.fechaVencimiento)}
+                                <span class="status-badge ${new Date(c.fechaVencimiento) < new Date() ? 'status-overdue' : 'status-pending'}">
+                                    ${new Date(c.fechaVencimiento) < new Date() ? 'Vencida' : 'Pendiente'}
+                                </span>
+                            </div>
+                        `).join('') : 
+                        '<p>No hay cobranzas activas</p>'
+                    }
+                </div>
+                
+                ${cobranza.notas ? `
+                <div class="ficha-section">
+                    <h4>📝 Notas</h4>
+                    <p>${cobranza.notas}</p>
+                </div>
+                ` : ''}
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cerrarFicha">Cerrar</button>
+                <button class="btn btn-primary" id="editarCliente" data-id="${cobranzaId}">
+                    <i class="fas fa-edit"></i> Editar Cliente
+                </button>
+                <button class="btn btn-warning" id="enviarMensajeCliente" data-id="${cobranzaId}">
+                    <i class="fas fa-envelope"></i> Enviar Mensaje
+                </button>
+            </div>
+        </div>
+    `;
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = modalHTML;
+    document.body.appendChild(modal);
+    
+    // Event listeners
+    modal.querySelector('.close-modal').addEventListener('click', function() {
+        modal.remove();
+    });
+    
+    modal.querySelector('#cerrarFicha').addEventListener('click', function() {
+        modal.remove();
+    });
+    
+    modal.querySelector('#editarCliente').addEventListener('click', function() {
+        modal.remove();
+        editCobranza(cobranzaId);
+    });
+    
+    modal.querySelector('#enviarMensajeCliente').addEventListener('click', function() {
+        modal.remove();
+        openMessageModalForCobranza(cobranzaId);
+    });
+    
+    window.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
     });
 }
 
@@ -1978,7 +2122,9 @@ function updateProveedoresUI() {
         
         tr.innerHTML = `
             <td>
-                <strong>${proveedor.nombre}</strong>
+                <strong class="clickable-proveedor" style="color: var(--primary); cursor: pointer; text-decoration: underline;" data-id="${proveedor.id}">
+                    ${proveedor.nombre}
+                </strong>
                 ${proveedor.contacto ? `<br><small>${proveedor.contacto}</small>` : ''}
             </td>
             <td>${proveedor.concepto}</td>
@@ -2030,6 +2176,14 @@ function updateProveedoresUI() {
             } else if (action.includes('fa-edit')) {
                 editProveedor(proveedorId);
             }
+        });
+    });
+
+    // AGREGAR ESTO: Event listeners para los nombres clickeables de proveedores
+    document.querySelectorAll('.clickable-proveedor').forEach(name => {
+        name.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            mostrarFichaProveedor(id);
         });
     });
 }
@@ -2105,50 +2259,110 @@ function verAbonos(cobranzaId) {
 }
 
 // Ver pagos de un proveedor
-function verPagosProveedor(proveedorId) {
+function mostrarFichaProveedor(proveedorId) {
     const proveedor = proveedores.find(p => p.id === proveedorId);
     if (!proveedor) return;
     
-    let pagosHTML = '';
-    if (proveedor.pagos && proveedor.pagos.length > 0) {
-        proveedor.pagos.forEach(pago => {
-            pagosHTML += `
-                <div class="abono-item">
-                    <div class="abono-info">
-                        <strong>$${pago.monto}</strong>
-                        <div class="abono-fecha">${formatDate(pago.fecha)}</div>
-                        ${pago.notas ? `<small>${pago.notas}</small>` : ''}
-                    </div>
-                </div>
-            `;
-        });
-    } else {
-        pagosHTML = '<p>No hay pagos registrados</p>';
+    // Calcular estadísticas del proveedor
+    const proveedoresMismo = proveedores.filter(p => p.nombre === proveedor.nombre);
+    const totalProveedores = proveedoresMismo.length;
+    const proveedoresPagados = proveedoresMismo.filter(p => p.estado === 'pagado').length;
+    const tasaPago = totalProveedores > 0 ? (proveedoresPagados / totalProveedores) * 100 : 0;
+    
+    // Calcular totales
+    const totalFacturado = proveedoresMismo.reduce((sum, p) => sum + parseFloat(p.monto), 0);
+    const totalPagado = proveedoresMismo
+        .filter(p => p.estado === 'pagado')
+        .reduce((sum, p) => sum + parseFloat(p.monto), 0);
+    
+    // Formatear teléfono para mostrar
+    let telefonoMostrar = proveedor.telefono || 'No registrado';
+    if (telefonoMostrar.startsWith('+58')) {
+        telefonoMostrar = telefonoMostrar.substring(3);
+    }
+    if (telefonoMostrar.length > 3) {
+        telefonoMostrar = telefonoMostrar.substring(0, 3) + '-' + telefonoMostrar.substring(3);
     }
     
-    const saldoPendiente = proveedor.saldoPendiente || calcularSaldoPendienteProveedor(proveedor);
-    
     const modalHTML = `
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
-                <h3 class="modal-title">Pagos - ${proveedor.nombre}</h3>
+                <h3 class="modal-title">🏢 Ficha de Proveedor: ${proveedor.nombre}</h3>
                 <button class="close-modal">&times;</button>
             </div>
-            <div>
-                <p><strong>Deuda total:</strong> $${proveedor.monto}</p>
-                <p><strong>Total pagado:</strong> $${(parseFloat(proveedor.monto) - saldoPendiente).toFixed(2)}</p>
-                <p><strong>Saldo pendiente:</strong> $${saldoPendiente.toFixed(2)}</p>
-                
-                <div class="abonos-section">
-                    <h4>Historial de Pagos</h4>
-                    ${pagosHTML}
+            <div class="modal-body">
+                <div class="ficha-section">
+                    <h4>📋 Información de Contacto</h4>
+                    <div class="ficha-grid">
+                        <div class="ficha-item">
+                            <label>Contacto:</label>
+                            <span>${proveedor.contacto || 'No registrado'}</span>
+                        </div>
+                        <div class="ficha-item">
+                            <label>Teléfono:</label>
+                            <span>${telefonoMostrar}</span>
+                        </div>
+                        <div class="ficha-item">
+                            <label>Email:</label>
+                            <span>${proveedor.email || 'No registrado'}</span>
+                        </div>
+                    </div>
                 </div>
                 
-                <div style="text-align: center; margin-top: 20px;">
-                    <button class="btn btn-primary" id="addPagoFromList" data-id="${proveedorId}">
-                        <i class="fas fa-plus"></i> Agregar Pago
-                    </button>
+                <div class="ficha-section">
+                    <h4>📊 Estadísticas del Proveedor</h4>
+                    <div class="ficha-grid">
+                        <div class="ficha-item">
+                            <label>Total Facturas:</label>
+                            <span>${totalProveedores}</span>
+                        </div>
+                        <div class="ficha-item">
+                            <label>Tasa de Pago:</label>
+                            <span>${tasaPago.toFixed(1)}%</span>
+                        </div>
+                        <div class="ficha-item">
+                            <label>Total Facturado:</label>
+                            <span>$${totalFacturado.toFixed(2)}</span>
+                        </div>
+                        <div class="ficha-item">
+                            <label>Total Pagado:</label>
+                            <span>$${totalPagado.toFixed(2)}</span>
+                        </div>
+                    </div>
                 </div>
+                
+                <div class="ficha-section">
+                    <h4>📦 Servicios/Productos</h4>
+                    <p><strong>Concepto:</strong> ${proveedor.concepto || 'No especificado'}</p>
+                </div>
+                
+                <div class="ficha-section">
+                    <h4>💰 Facturas Pendientes</h4>
+                    ${proveedoresMismo.filter(p => p.estado !== 'pagado' && p.saldoPendiente > 0).length > 0 ? 
+                        proveedoresMismo.filter(p => p.estado !== 'pagado' && p.saldoPendiente > 0).map(p => `
+                            <div class="proveedor-pendiente">
+                                <strong>$${p.monto}</strong> - Vence: ${formatDate(p.fechaVencimiento)}
+                                <span class="status-badge ${new Date(p.fechaVencimiento) < new Date() ? 'status-overdue' : 'status-pending'}">
+                                    ${new Date(p.fechaVencimiento) < new Date() ? 'Vencida' : 'Pendiente'}
+                                </span>
+                            </div>
+                        `).join('') : 
+                        '<p>No hay facturas pendientes</p>'
+                    }
+                </div>
+                
+                ${proveedor.notas ? `
+                <div class="ficha-section">
+                    <h4>📝 Notas</h4>
+                    <p>${proveedor.notas}</p>
+                </div>
+                ` : ''}
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cerrarFichaProv">Cerrar</button>
+                <button class="btn btn-primary" id="editarProveedor" data-id="${proveedorId}">
+                    <i class="fas fa-edit"></i> Editar Proveedor
+                </button>
             </div>
         </div>
     `;
@@ -2158,13 +2372,18 @@ function verPagosProveedor(proveedorId) {
     modal.innerHTML = modalHTML;
     document.body.appendChild(modal);
     
+    // Event listeners
     modal.querySelector('.close-modal').addEventListener('click', function() {
         modal.remove();
     });
     
-    modal.querySelector('#addPagoFromList').addEventListener('click', function() {
+    modal.querySelector('#cerrarFichaProv').addEventListener('click', function() {
         modal.remove();
-        openPagoProveedorModal(proveedorId);
+    });
+    
+    modal.querySelector('#editarProveedor').addEventListener('click', function() {
+        modal.remove();
+        editProveedor(proveedorId);
     });
     
     window.addEventListener('click', function(e) {
