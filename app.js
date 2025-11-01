@@ -1739,20 +1739,21 @@ function enviarWhatsApp(cliente, mensaje) {
     const mensajeCodificado = encodeURIComponent(mensaje);
     const whatsappURL = `https://web.whatsapp.com/send?phone=${telefonoLimpio}&text=${mensajeCodificado}`;
     
-    // SOLUCIÓN: Cerrar pestaña anterior antes de abrir nueva
+    // SOLUCIÓN: Forzar a que use siempre la misma pestaña
+    // Primero intentar cerrar cualquier pestaña anterior con ese nombre
     try {
-        // Intentar cerrar pestaña anterior de WhatsApp
-        const ventanaAnterior = window.open('', 'PESTANA_WHATSAPP_APP');
+        const ventanaAnterior = window.open('', 'WHATSAPP_FIJO');
         if (ventanaAnterior) {
             ventanaAnterior.close();
         }
     } catch (e) {
-        // Si hay error, continuar igual
-        console.log('No se pudo cerrar pestaña anterior');
+        // Ignorar errores
     }
     
-    // Abrir nueva pestaña con nombre único
-    window.open(whatsappURL, 'PESTANA_WHATSAPP_APP');
+    // Pequeña pausa para asegurar que se cerró
+    setTimeout(() => {
+        window.open(whatsappURL, 'WHATSAPP_FIJO');
+    }, 100);
     
     return true;
 }
