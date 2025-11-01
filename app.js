@@ -1727,7 +1727,6 @@ function enviarWhatsApp(cliente, mensaje) {
         return false;
     }
     
-    // Asegurarse de que el teléfono tenga el formato correcto
     let telefonoLimpio = telefono.replace(/\D/g, '');
     if (telefonoLimpio.startsWith('58')) {
         telefonoLimpio = telefonoLimpio;
@@ -1740,13 +1739,20 @@ function enviarWhatsApp(cliente, mensaje) {
     const mensajeCodificado = encodeURIComponent(mensaje);
     const whatsappURL = `https://web.whatsapp.com/send?phone=${telefonoLimpio}&text=${mensajeCodificado}`;
     
-    // SOLUCIÓN: Usar un nombre fijo para reutilizar la misma pestaña
-    const whatsappWindow = window.open(whatsappURL, 'PESTANA_WHATSAPP_UNICA');
-    
-    // Si la ventana se abrió correctamente, enfocarla
-    if (whatsappWindow) {
-        whatsappWindow.focus();
+    // SOLUCIÓN: Cerrar pestaña anterior antes de abrir nueva
+    try {
+        // Intentar cerrar pestaña anterior de WhatsApp
+        const ventanaAnterior = window.open('', 'PESTANA_WHATSAPP_APP');
+        if (ventanaAnterior) {
+            ventanaAnterior.close();
+        }
+    } catch (e) {
+        // Si hay error, continuar igual
+        console.log('No se pudo cerrar pestaña anterior');
     }
+    
+    // Abrir nueva pestaña con nombre único
+    window.open(whatsappURL, 'PESTANA_WHATSAPP_APP');
     
     return true;
 }
