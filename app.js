@@ -1740,15 +1740,11 @@ function enviarWhatsApp(cliente, mensaje) {
     const mensajeCodificado = encodeURIComponent(mensaje);
     const whatsappURL = `https://web.whatsapp.com/send?phone=${telefonoLimpio}&text=${mensajeCodificado}`;
     
-    // Verificar si ya existe una pestaña de WhatsApp abierta
-    let whatsappWindow = window.open('', 'whatsappWindow');
+    // SOLUCIÓN: Usar un nombre fijo para reutilizar la misma pestaña
+    const whatsappWindow = window.open(whatsappURL, 'PESTANA_WHATSAPP_UNICA');
     
-    if (!whatsappWindow || whatsappWindow.closed || !whatsappWindow.location.href.includes('whatsapp')) {
-        // No existe pestaña de WhatsApp, abrir una nueva
-        whatsappWindow = window.open(whatsappURL, 'whatsappWindow');
-    } else {
-        // Ya existe pestaña de WhatsApp, reutilizarla
-        whatsappWindow.location.href = whatsappURL;
+    // Si la ventana se abrió correctamente, enfocarla
+    if (whatsappWindow) {
         whatsappWindow.focus();
     }
     
