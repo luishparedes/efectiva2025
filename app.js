@@ -25,6 +25,204 @@ let statusChart = null;
 let currentTab = 'all';
 let currentTabProv = 'all-prov';
 
+// 🔒 BLOQUE DE SEGURIDAD - Protección F12 y DevTools
+console.log("🔒 Inicializando medidas de seguridad...");
+
+// 1. Detectar apertura de DevTools (F12)
+function detectDevTools() {
+    const threshold = 160; // Umbral para detectar DevTools
+    const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+    const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+    
+    if (widthThreshold || heightThreshold) {
+        console.warn("🚫 Acceso a DevTools detectado");
+        // No hacemos nada drástico, solo registramos
+        return true;
+    }
+    return false;
+}
+
+// 2. Bloquear tecla F12 y acceso contextual
+document.addEventListener('keydown', function(e) {
+    // Bloquear F12
+    if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault();
+        console.warn("🚫 Tecla F12 bloqueada");
+        showNotification('Acceso restringido para proteger la aplicación', 'warning');
+        return false;
+    }
+    
+    // Bloquear Ctrl+Shift+I, Ctrl+Shift+C, Ctrl+U
+    if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'C' || e.key === 'c')) {
+        e.preventDefault();
+        console.warn("🚫 Combinación de teclas bloqueada");
+        return false;
+    }
+    
+    // Bloquear clic derecho en elementos sensibles
+    if (e.ctrlKey && e.key === 'U') {
+        e.preventDefault();
+        console.warn("🚫 Ver código fuente bloqueado");
+        return false;
+    }
+});
+
+// 3. Bloquear clic derecho en toda la página
+document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    console.warn("🚫 Clic derecho bloqueado");
+    showNotification('Acceso restringido para proteger la aplicación', 'warning');
+    return false;
+});
+
+// 4. Detectar cambios de tamaño (indicador de DevTools)
+let devToolsOpen = false;
+setInterval(function() {
+    if (detectDevTools()) {
+        if (!devToolsOpen) {
+            devToolsOpen = true;
+            console.warn("⚠️ Herramientas de desarrollo detectadas");
+            // Podrías agregar aquí una acción como cerrar sesión si quieres
+        }
+    } else {
+        devToolsOpen = false;
+    }
+}, 1000);
+
+// 5. Protección contra manipulación del DOM
+Object.defineProperty(window, 'console', {
+    value: console,
+    writable: false,
+    configurable: false
+});
+
+// 📱 BLOQUE DE OPTIMIZACIÓN PARA MÓVILES
+console.log("📱 Optimizando para dispositivos móviles...");
+
+// 1. Detectar si es dispositivo móvil
+function isMobileDevice() {
+    return (typeof window.orientation !== "undefined") || 
+           (navigator.userAgent.indexOf('IEMobile') !== -1) ||
+           (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+}
+
+// 2. Optimizar eventos táctiles
+function setupMobileOptimizations() {
+    if (isMobileDevice()) {
+        console.log("📱 Dispositivo móvil detectado, aplicando optimizaciones...");
+        
+        // Aumentar tamaño de botones táctiles
+        document.querySelectorAll('button, .btn, .btn-icon').forEach(button => {
+            button.style.minHeight = '44px';
+            button.style.minWidth = '44px';
+        });
+        
+        // Optimizar inputs para móviles
+        document.querySelectorAll('input, select, textarea').forEach(input => {
+            input.style.fontSize = '16px'; // Previene zoom en iOS
+        });
+        
+        // Prevenir zoom doble tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+    }
+}
+
+// 3. Manejo de errores específicos de móviles
+window.addEventListener('error', function(e) {
+    if (isMobileDevice()) {
+        console.log("📱 Error en móvil:", e.error);
+        // No mostrar errores técnicos al usuario en móviles
+        if (e.error && e.error.message && e.error.message.includes('firebase')) {
+            showNotification('Error de conexión. Verifica tu internet.', 'warning');
+        }
+    }
+});
+
+// 4. Optimizar rendimiento en móviles
+function optimizeMobilePerformance() {
+    if (isMobileDevice()) {
+        // Limitar re-renderizados frecuentes
+        let renderTimeout;
+        const originalUpdateCobranzasUI = updateCobranzasUI;
+        updateCobranzasUI = function() {
+            clearTimeout(renderTimeout);
+            renderTimeout = setTimeout(originalUpdateCobranzasUI, 100);
+        };
+        
+        const originalUpdateProveedoresUI = updateProveedoresUI;
+        updateProveedoresUI = function() {
+            clearTimeout(renderTimeout);
+            renderTimeout = setTimeout(originalUpdateProveedoresUI, 100);
+        };
+    }
+}
+
+// 🛡️ BLOQUE DE SEGURIDAD ADICIONAL
+console.log("🛡️ Aplicando medidas de seguridad adicionales...");
+
+// 1. Protección contra inyección de código
+function sanitizeInput(input) {
+    if (typeof input !== 'string') return input;
+    
+    return input
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/'/g, '&#x27;')
+        .replace(/"/g, '&quot;')
+        .replace(/\//g, '&#x2F;')
+        .replace(/\\/g, '&#x5C;')
+        .replace(/`/g, '&#x60;');
+}
+
+// 2. Validación mejorada de teléfonos
+function validatePhoneNumber(phone) {
+    const phoneRegex = /^(\+58|58)?(4(1[2-9]|2[0-9]|3[0-9]|4[0-9]))-?\d{7}$/;
+    return phoneRegex.test(phone.replace(/-/g, ''));
+}
+
+// 3. Detectar navegadores sospechosos
+function checkBrowserSecurity() {
+    const userAgent = navigator.userAgent.toLowerCase();
+    
+    // Detectar herramientas de automatización
+    if (userAgent.includes('headless') || 
+        userAgent.includes('phantomjs') || 
+        userAgent.includes('selenium') ||
+        userAgent.includes('webdriver') ||
+        userAgent.includes('puppeteer')) {
+        console.warn("🚫 Navegador automatizado detectado");
+        return false;
+    }
+    
+    return true;
+}
+
+// 4. Protección contra bots y scripts automatizados
+let lastActionTime = Date.now();
+document.addEventListener('click', function() {
+    lastActionTime = Date.now();
+});
+
+document.addEventListener('keypress', function() {
+    lastActionTime = Date.now();
+});
+
+// Verificar actividad humana periódicamente
+setInterval(function() {
+    const inactiveTime = Date.now() - lastActionTime;
+    if (inactiveTime > 300000) { // 5 minutos de inactividad
+        console.log("🕒 Sesión inactiva detectada");
+        // Podrías agregar logout automático aquí si quieres
+    }
+}, 60000);
+
 // CORRECCIÓN 1: Solo tu correo como administrador
 const ADMIN_EMAIL = 'luishparedes94@gmail.com';
 const ADMIN_PHONE = '+58-412-5278450';
@@ -109,6 +307,12 @@ const proveedorPhoneInput = document.getElementById('proveedorPhone');
 // Inicialización de la aplicación
 document.addEventListener('DOMContentLoaded', function() {
     console.log("🚀 Aplicación iniciada");
+  
+      // 🔒 Inicializar medidas de seguridad
+    console.log("🔒 Inicializando medidas de seguridad...");
+    setupMobileOptimizations();
+    optimizeMobilePerformance();
+    checkBrowserSecurity();
     
     // Configurar monitoreo de conexión
     setupConnectionMonitoring();
@@ -216,7 +420,7 @@ function updateNotificationBadge() {
     }
 }
 
-// CORRECCIÓN: Configurar input de teléfono para permitir guiones (formato simple)
+// 📞 Configurar inputs de teléfono para permitir guiones (formato mejorado)
 function setupPhoneInput() {
     console.log("📞 Configurando inputs de teléfono...");
     
@@ -226,6 +430,12 @@ function setupPhoneInput() {
         if (input) {
             input.addEventListener('input', function(e) {
                 let value = e.target.value.replace(/[^\d]/g, ''); // Solo números
+                
+                // Validar que sea un número venezolano válido
+                if (value.length > 0 && !value.startsWith('4')) {
+                    showNotification('Los números venezolanos deben comenzar con 4', 'warning');
+                    value = value.substring(1); // Remover primer carácter inválido
+                }
                 
                 // Formato automático: 412-1234567 (solo un guión)
                 if (value.length > 3 && value.length <= 10) {
@@ -238,6 +448,13 @@ function setupPhoneInput() {
                 }
                 
                 e.target.value = value;
+                
+                // Validar en tiempo real
+                if (value.length >= 11 && !validatePhoneNumber(value)) {
+                    input.style.borderColor = 'var(--danger)';
+                } else {
+                    input.style.borderColor = '';
+                }
             });
             
             input.addEventListener('keydown', function(e) {
@@ -254,6 +471,14 @@ function setupPhoneInput() {
             
             // Establecer placeholder de ejemplo
             input.placeholder = '412-1234567';
+            
+            // Agregar validación al perder foco
+            input.addEventListener('blur', function() {
+                if (this.value && !validatePhoneNumber(this.value)) {
+                    showNotification('Número de teléfono venezolano inválido. Formato: 412-1234567', 'warning');
+                    this.focus();
+                }
+            });
         }
     });
 }
