@@ -227,6 +227,88 @@ setInterval(function() {
 const ADMIN_EMAIL = 'luishparedes94@gmail.com';
 const ADMIN_PHONE = '+58-412-5278450';
 
+// 🔒 BLOQUEO DE CORREOS SOSPECHOSOS - Prevención de registros maliciosos
+console.log("🔒 Configurando protección contra correos sospechosos...");
+
+// Función para detectar correos sospechosos con patrones aleatorios
+function isSuspiciousEmail(email) {
+    if (!email || typeof email !== 'string') return false;
+    
+    const emailLower = email.toLowerCase();
+    
+    // Patrones sospechosos comunes en correos falsos
+    const suspiciousPatterns = [
+        // Patrón específico que mencionaste
+        /hvkojz6rgwxjy-p7qpnn_/,
+        
+        // Patrones generales de correos temporales/aleatorios
+        /[a-z0-9]{10,}_[a-z0-9]{5,}@/, // Muchos caracteres + guión bajo + muchos caracteres
+        /[a-z0-9]{15,}@/, // Más de 15 caracteres aleatorios antes del @
+        /[a-z0-9]{8,}-[a-z0-9]{8,}@/, // Patrón con guión medio
+        /test.*@/i, // Palabra "test"
+        /fake.*@/i, // Palabra "fake"
+        /temp.*@/i, // Palabra "temp"
+        /spam.*@/i, // Palabra "spam"
+        /dummy.*@/i, // Palabra "dummy"
+        /random.*@/i, // Palabra "random"
+        /[a-z0-9]+_[a-z0-9]+_[a-z0-9]+@/ // Múltiples guiones bajos
+    ];
+    
+    // Dominios de correo temporales conocidos (puedes agregar más)
+    const tempDomains = [
+        'tempmail.com',
+        'temp-mail.org',
+        'guerrillamail.com',
+        'mailinator.com',
+        '10minutemail.com',
+        'throwawaymail.com',
+        'yopmail.com',
+        'fakeinbox.com',
+        'trashmail.com'
+    ];
+    
+    // Verificar patrones sospechosos
+    for (const pattern of suspiciousPatterns) {
+        if (pattern.test(emailLower)) {
+            console.warn(`🚫 Correo sospechoso detectado por patrón: ${email}`);
+            return true;
+        }
+    }
+    
+    // Verificar dominios temporales
+    const domain = emailLower.split('@')[1];
+    if (domain && tempDomains.some(tempDomain => domain.includes(tempDomain))) {
+        console.warn(`🚫 Correo temporal detectado: ${email}`);
+        return true;
+    }
+    
+    // Verificar estructura básica de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailLower)) {
+        console.warn(`🚫 Formato de email inválido: ${email}`);
+        return true;
+    }
+    
+    return false;
+}
+
+// Función para validar email durante el registro
+function validateEmailForRegistration(email) {
+    if (isSuspiciousEmail(email)) {
+        showNotification('El correo electrónico no es válido. Por favor, utiliza un correo personal real.', 'danger');
+        return false;
+    }
+    
+    // Validación adicional de formato estándar
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showNotification('Por favor, ingresa un correo electrónico válido.', 'danger');
+        return false;
+    }
+    
+    return true;
+}
+
 // Elementos DOM
 console.log("🔍 Inicializando elementos DOM...");
 const authContainer = document.getElementById('authContainer');
@@ -634,24 +716,30 @@ function setupAuthListeners() {
     }
 
     // Formulario de registro
-    if (registerForm) {
-        registerForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const name = document.getElementById('registerName').value;
-            const email = document.getElementById('registerEmail').value;
-            const password = document.getElementById('registerPassword').value;
-            
-            console.log("📝 Intentando registro...");
-            
-            // CORRECCIÓN: Solo tu correo puede tener acceso administrativo
-            let userPlan = 'free';
-            let isAdmin = false;
-            
-            if (email === ADMIN_EMAIL) {
-                userPlan = 'pro';
-                isAdmin = true;
-                console.log("👑 Usuario administrador detectado");
-            }
+   if (registerForm) {
+    registerForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const name = document.getElementById('registerName').value;
+        const email = document.getElementById('registerEmail').value;
+        const password = document.getElementById('registerPassword').value;
+        
+        console.log("📝 Intentando registro...");
+        
+        // 🔒 VALIDACIÓN DE CORREO SOSPECHOSO - NUEVA SEGURIDAD
+        if (!validateEmailForRegistration(email)) {
+            console.warn(`🚫 Registro bloqueado: correo sospechoso detectado - ${email}`);
+            return; // Detener el registro
+        }
+        
+        // CORRECCIÓN: Solo tu correo puede tener acceso administrativo
+        let userPlan = 'free';
+        let isAdmin = false;
+        
+        if (email === ADMIN_EMAIL) {
+            userPlan = 'pro';
+            isAdmin = true;
+            console.log("👑 Usuario administrador detectado");
+        }
             
             auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
