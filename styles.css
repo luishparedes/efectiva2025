@@ -133,67 +133,6 @@ nav a:hover, nav a.active {
     background-color: rgba(0, 122, 255, 0.1);
 }
 
-/* Auth Forms */
-.auth-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 80vh;
-    padding: 40px 0;
-}
-
-.auth-card {
-    background-color: var(--card-bg);
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    padding: 40px;
-    width: 100%;
-    max-width: 450px;
-}
-
-.auth-card h2 {
-    margin-bottom: 25px;
-    text-align: center;
-    color: var(--dark);
-}
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
-    color: var(--dark);
-}
-
-.form-control {
-    width: 100%;
-    padding: 12px 15px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    font-size: 1rem;
-    transition: border 0.3s;
-}
-
-.form-control:focus {
-    outline: none;
-    border-color: var(--primary);
-}
-
-.auth-switch {
-    text-align: center;
-    margin-top: 25px;
-    color: var(--gray);
-}
-
-.auth-switch a {
-    color: var(--primary);
-    text-decoration: none;
-    font-weight: 500;
-}
-
 /* Dashboard */
 .dashboard {
     padding: 30px 0;
@@ -536,6 +475,47 @@ tr:last-child td {
     color: var(--gray);
 }
 
+/* Auth Forms */
+.auth-card {
+    background-color: var(--card-bg);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    padding: 40px;
+    width: 100%;
+    max-width: 450px;
+}
+
+.auth-card h2 {
+    margin-bottom: 25px;
+    text-align: center;
+    color: var(--dark);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--dark);
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 1rem;
+    transition: border 0.3s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
 /* Alert */
 .alert {
     padding: 15px;
@@ -719,17 +699,6 @@ tr:last-child td {
 .plan-pro {
     background-color: rgba(88, 86, 214, 0.1);
     color: var(--secondary);
-}
-
-/* Admin panel */
-.admin-panel {
-    padding: 30px 0;
-}
-
-.admin-actions {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
 }
 
 /* Recibo styles */
