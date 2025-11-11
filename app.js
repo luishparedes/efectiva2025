@@ -25,6 +25,34 @@ let statusChart = null;
 let currentTab = 'all';
 let currentTabProv = 'all-prov';
 
+// 🔑 VERIFICACIÓN DE ADMINISTRADOR (ACME)
+auth.onAuthStateChanged(user => {
+    if (user) {
+        currentUser = user; // Guardamos usuario actual
+        const uid = user.uid;
+
+        database.ref("admins/" + uid).once("value")
+            .then(snapshot => {
+                const isAdmin = snapshot.val() === true;
+                if (isAdmin) {
+                    console.log("👑 Eres administrador (ACME)");
+                    // Mostrar panel de admin si existe en tu HTML
+                    const adminPanel = document.getElementById("adminPanel");
+                    if (adminPanel) adminPanel.style.display = "block";
+                } else {
+                    console.log("👤 Usuario normal");
+                    const adminPanel = document.getElementById("adminPanel");
+                    if (adminPanel) adminPanel.style.display = "none";
+                }
+            });
+    } else {
+        console.log("🚪 No hay sesión activa");
+        currentUser = null;
+        const adminPanel = document.getElementById("adminPanel");
+        if (adminPanel) adminPanel.style.display = "none";
+    }
+});
+
 // 🔒 BLOQUE DE SEGURIDAD - Protección F12 y DevTools
 console.log("🔒 Inicializando medidas de seguridad...");
 
