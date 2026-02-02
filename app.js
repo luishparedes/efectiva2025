@@ -1,9 +1,32 @@
+// ============================================
+// CONFIGURACIÓN DE CLAVES DE ACCESO
+// ============================================
+// AQUÍ ES DONDE VAS A AGREGAR/EDITAR LAS CLAVES
+// Formato: Letra-Número-Letra-Número (4 dígitos)
+// Ejemplos: A1B2, C3D4, E5F6, X9Y8
+// ============================================
+
+const ACCESS_KEYS = [
+    "A1B3",  // Clave ejemplo 1
+    "C3D4",  // Clave ejemplo 2  
+    "E5F6",  // Clave ejemplo 3
+    "X9Y8",  // Clave ejemplo 4
+    "Z7W3"   // Clave ejemplo 5
+];
+
+// ============================================
+// NO MODIFIQUES NADA DEBAJO DE ESTA LÍNEA
+// A MENOS QUE SEPAS LO QUE ESTÁS HACIENDO
+// ============================================
+
 // Variables globales
 let currentUser = {
     nombre: 'Usuario PPB',
     email: 'usuario@ppb.com',
     plan: 'pro',
-    activo: true
+    activo: true,
+    accessKey: '',
+    sessionStart: null
 };
 
 let companyData = null;
@@ -16,9 +39,18 @@ let actividades = [];
 let statusChart = null;
 let currentTab = 'all';
 let currentTabProv = 'all-prov';
+let isAuthenticated = false;
 
 // Elementos DOM
-const authContainer = document.getElementById('authContainer');
+const authScreen = document.getElementById('authScreen');
+const appContainer = document.getElementById('appContainer');
+const authForm = document.getElementById('authForm');
+const authMessage = document.getElementById('authMessage');
+const accessKeyInput = document.getElementById('accessKey');
+const userNameInput = document.getElementById('userName');
+const displayUserName = document.getElementById('displayUserName');
+
+// Elementos de la aplicación principal
 const dashboard = document.getElementById('dashboard');
 const cobranzasSection = document.getElementById('cobranzas');
 const proveedoresSection = document.getElementById('proveedores');
@@ -26,7 +58,6 @@ const mensajesSection = document.getElementById('mensajes');
 const empresaSection = document.getElementById('empresa');
 const userInfo = document.getElementById('userInfo');
 const userAvatar = document.getElementById('userAvatar');
-const userName = document.getElementById('userName');
 const userPlanBadge = document.getElementById('userPlanBadge');
 const logoutBtn = document.getElementById('logoutBtn');
 const notificationBtn = document.getElementById('notificationBtn');
@@ -73,18 +104,264 @@ const messageIcon = document.getElementById('messageIcon');
 const messageText = document.getElementById('messageText');
 const upcomingList = document.getElementById('upcomingList');
 
+// ============================================
+// SISTEMA DE SEGURIDAD
+// ============================================
+
+// Proteger contra F12 y herramientas de desarrollador
+function setupSecurity() {
+    console.log("🛡️ Configurando sistema de seguridad...");
+    
+    // Deshabilitar F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+    document.addEventListener('keydown', function(e) {
+        // Detectar F12
+        if (e.key === 'F12') {
+            e.preventDefault();
+            showNotification('Acceso a herramientas de desarrollador deshabilitado', 'warning');
+            return false;
+        }
+        
+        // Detectar Ctrl+Shift+I (Chrome/Firefox/Edge)
+        if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+            e.preventDefault();
+            showNotification('Acceso a herramientas de desarrollador deshabilitado', 'warning');
+            return false;
+        }
+        
+        // Detectar Ctrl+Shift+J (Chrome Console)
+        if (e.ctrlKey && e.shiftKey && e.key === 'J') {
+            e.preventDefault();
+            showNotification('Acceso a herramientas de desarrollador deshabilitado', 'warning');
+            return false;
+        }
+        
+        // Detectar Ctrl+U (Ver código fuente)
+        if (e.ctrlKey && e.key === 'u') {
+            e.preventDefault();
+            showNotification('Acceso al código fuente deshabilitado', 'warning');
+            return false;
+        }
+    });
+    
+    // Protección contra clic derecho
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        showNotification('Menú contextual deshabilitado por seguridad', 'warning');
+        return false;
+    }, false);
+    
+    // Protección para móviles (solo prevenir F12, no afectar otras funcionalidades)
+    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        console.log("📱 Dispositivo móvil detectado, ajustando seguridad...");
+        // En móviles, solo deshabilitamos el menú contextual
+        document.removeEventListener('keydown', arguments.callee);
+    }
+    
+    console.log("✅ Sistema de seguridad configurado");
+}
+
+// Validar clave de acceso
+function validateAccessKey(key) {
+    // Limpiar y normalizar la clave
+    key = key.trim().toUpperCase();
+    
+    // Validar formato: Letra-Número-Letra-Número
+    const keyRegex = /^[A-Z][0-9][A-Z][0-9]$/;
+    if (!keyRegex.test(key)) {
+        return {
+            valid: false,
+            message: 'Formato inválido. Use: Letra, Número, Letra, Número (ej: A1B2)'
+        };
+    }
+    
+    // Verificar si la clave está en la lista autorizada
+    if (!ACCESS_KEYS.includes(key)) {
+        return {
+            valid: false,
+            message: 'Clave de acceso incorrecta'
+        };
+    }
+    
+    return {
+        valid: true,
+        message: 'Clave válida'
+    };
+}
+
+// Mostrar mensaje de autenticación
+function showAuthMessage(message, type = 'danger') {
+    if (!authMessage) return;
+    
+    authMessage.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+        <span>${message}</span>
+    `;
+    authMessage.className = `alert alert-${type}`;
+    authMessage.style.display = 'flex';
+    
+    // Auto-ocultar después de 5 segundos
+    setTimeout(() => {
+        authMessage.style.display = 'none';
+    }, 5000);
+}
+
+// Iniciar sesión
+function login(accessKey, userName = '') {
+    console.log("🔑 Intentando inicio de sesión...");
+    
+    const validation = validateAccessKey(accessKey);
+    if (!validation.valid) {
+        showAuthMessage(validation.message, 'danger');
+        accessKeyInput.focus();
+        return false;
+    }
+    
+    // Configurar usuario
+    currentUser.accessKey = accessKey;
+    currentUser.sessionStart = new Date();
+    
+    if (userName && userName.trim() !== '') {
+        currentUser.nombre = userName.trim();
+    }
+    
+    isAuthenticated = true;
+    
+    // Mostrar mensaje de éxito
+    showAuthMessage('Acceso autorizado. Iniciando sesión...', 'success');
+    
+    // Transición suave
+    setTimeout(() => {
+        // Ocultar pantalla de autenticación
+        authScreen.style.opacity = '0';
+        authScreen.style.transform = 'translateY(-20px)';
+        
+        setTimeout(() => {
+            authScreen.style.display = 'none';
+            appContainer.style.display = 'block';
+            
+            // Inicializar aplicación
+            initializeApp();
+            
+            // Registrar actividad
+            registrarActividad('sistema', `Inicio de sesión - Clave: ${accessKey}`, `Usuario: ${currentUser.nombre}`);
+            
+            // Mostrar notificación de bienvenida
+            showNotification(`Bienvenido ${currentUser.nombre}`, 'success');
+            showNotificationInCenter('Sesión iniciada', `Acceso autorizado con clave: ${accessKey}`, 'success');
+        }, 300);
+    }, 1000);
+    
+    return true;
+}
+
+// Cerrar sesión
+function logout() {
+    if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+        // Registrar actividad
+        registrarActividad('sistema', 'Cierre de sesión', `Usuario: ${currentUser.nombre}, Duración: ${Math.round((new Date() - currentUser.sessionStart) / 60000)} minutos`);
+        
+        // Limpiar datos de sesión
+        currentUser.accessKey = '';
+        currentUser.sessionStart = null;
+        isAuthenticated = false;
+        
+        // Mostrar pantalla de autenticación
+        appContainer.style.display = 'none';
+        authScreen.style.display = 'flex';
+        authScreen.style.opacity = '1';
+        authScreen.style.transform = 'translateY(0)';
+        
+        // Limpiar formulario
+        if (authForm) authForm.reset();
+        if (authMessage) authMessage.style.display = 'none';
+        
+        // Limpiar notificaciones
+        if (notificationList) notificationList.innerHTML = '';
+        if (notificationBadge) notificationBadge.style.display = 'none';
+        
+        showNotification('Sesión cerrada correctamente', 'info');
+    }
+}
+
+// Verificar autenticación antes de acciones críticas
+function requireAuth(action) {
+    if (!isAuthenticated) {
+        showNotification('Debe iniciar sesión para realizar esta acción', 'warning');
+        return false;
+    }
+    return true;
+}
+
+// ============================================
+// INICIALIZACIÓN DE LA APLICACIÓN
+// ============================================
+
 // Inicialización de la aplicación
 document.addEventListener('DOMContentLoaded', function() {
     console.log("🚀 Aplicación iniciada");
+    
+    // Configurar seguridad
+    setupSecurity();
+    
+    // Configurar formulario de autenticación
+    if (authForm) {
+        authForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const accessKey = accessKeyInput.value.trim();
+            const userName = userNameInput.value.trim();
+            
+            if (!accessKey) {
+                showAuthMessage('Por favor ingrese la clave de acceso', 'warning');
+                accessKeyInput.focus();
+                return;
+            }
+            
+            login(accessKey, userName);
+        });
+        
+        // Validación en tiempo real
+        accessKeyInput.addEventListener('input', function() {
+            const value = this.value.toUpperCase();
+            this.value = value;
+            
+            // Validar formato básico
+            if (value.length === 4) {
+                const keyRegex = /^[A-Z][0-9][A-Z][0-9]$/;
+                if (!keyRegex.test(value)) {
+                    this.style.borderColor = 'var(--danger)';
+                    showAuthMessage('Formato: Letra, Número, Letra, Número', 'warning');
+                } else {
+                    this.style.borderColor = 'var(--success)';
+                    authMessage.style.display = 'none';
+                }
+            } else {
+                this.style.borderColor = '';
+                authMessage.style.display = 'none';
+            }
+        });
+    }
+    
+    // Configurar logout
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logout);
+    }
+    
+    // Configurar inputs de teléfono
+    setupPhoneInput();
+    
+    console.log("✅ Sistema listo para autenticación");
+});
+
+// Inicializar aplicación después de login
+function initializeApp() {
+    console.log("🏠 Inicializando aplicación principal...");
     
     // Configurar navegación
     setupNavigation();
     
     // Configurar notificaciones
     setupNotifications();
-    
-    // Configurar inputs de teléfono
-    setupPhoneInput();
     
     // Configurar cambio de ícono en mensajes
     setupMessageChannelListener();
@@ -97,9 +374,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cargar datos iniciales
     loadInitialData();
     
-    // Mostrar aplicación
-    showApp();
-});
+    // Actualizar UI del usuario
+    updateUserUI();
+}
+
+// ============================================
+// FUNCIONALIDADES EXISTENTES (modificadas para seguridad)
+// ============================================
 
 // Configurar sistema de notificaciones
 function setupNotifications() {
@@ -107,6 +388,7 @@ function setupNotifications() {
     
     if (notificationBtn) {
         notificationBtn.addEventListener('click', function() {
+            if (!requireAuth('ver notificaciones')) return;
             notificationCenter.classList.toggle('active');
         });
     }
@@ -127,7 +409,7 @@ function setupNotifications() {
 
 // Mostrar notificación en el centro de notificaciones
 function showNotificationInCenter(title, message, type = 'info') {
-    if (!notificationList) return;
+    if (!notificationList || !requireAuth('ver notificaciones')) return;
     
     const notificationItem = document.createElement('div');
     notificationItem.className = `notification-item ${type}`;
@@ -264,7 +546,6 @@ function loadInitialData() {
     loadFromLocalStorage();
     
     // Actualizar UI
-    updateUserUI();
     updateCobranzasUI();
     updateProveedoresUI();
     updateDashboardStats();
@@ -272,7 +553,7 @@ function loadInitialData() {
     updateRecentActivityUI();
     
     // Mostrar notificación de bienvenida
-    showNotificationInCenter('Bienvenido', 'Sistema de cobranza PPB cargado correctamente', 'success');
+    showNotificationInCenter('Sistema cargado', 'Datos cargados correctamente', 'success');
 }
 
 // Cargar datos del localStorage
@@ -368,25 +649,13 @@ function copyToClipboard(text) {
 function updateUserUI() {
     console.log("👤 Actualizando UI del usuario");
     
-    if (userName) userName.textContent = currentUser.nombre;
+    if (displayUserName) displayUserName.textContent = currentUser.nombre;
     if (userAvatar) userAvatar.textContent = currentUser.nombre.charAt(0).toUpperCase();
     
     if (userPlanBadge) {
         userPlanBadge.textContent = currentUser.plan === 'free' ? 'Free' : 'Pro';
         userPlanBadge.className = `plan-badge plan-${currentUser.plan}`;
     }
-}
-
-// Mostrar aplicación
-function showApp() {
-    console.log("🏠 Mostrando aplicación");
-    
-    // Cargar datos de empresa en el formulario
-    if (document.getElementById('companyName')) document.getElementById('companyName').value = companyData.nombre || '';
-    if (document.getElementById('companyRif')) document.getElementById('companyRif').value = companyData.rif || '';
-    if (document.getElementById('companyPhone')) document.getElementById('companyPhone').value = companyData.telefono || '';
-    if (document.getElementById('companyEmail')) document.getElementById('companyEmail').value = companyData.email || '';
-    if (document.getElementById('companyContacts')) document.getElementById('companyContacts').value = companyData.contactos || '';
 }
 
 // Configurar navegación
@@ -396,6 +665,8 @@ function setupNavigation() {
     navLinks.forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
+            
+            if (!requireAuth('navegar')) return;
             
             navLinks.forEach(l => l.classList.remove('active'));
             this.classList.add('active');
@@ -413,16 +684,6 @@ function setupNavigation() {
             }
         });
     });
-    
-    // Configurar logout
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function() {
-            if (confirm('¿Estás seguro de que quieres salir?')) {
-                // En una versión real, aquí se limpiaría la sesión
-                showNotification('Sesión cerrada', 'info');
-            }
-        });
-    }
 }
 
 // Configurar modales
@@ -430,19 +691,34 @@ function setupModals() {
     console.log("📦 Configurando modales");
     
     if (addCobranzaBtn) {
-        addCobranzaBtn.addEventListener('click', openCobranzaModal);
+        addCobranzaBtn.addEventListener('click', function() {
+            if (!requireAuth('agregar cobranza')) return;
+            openCobranzaModal();
+        });
     }
     if (addCobranzaBtn2) {
-        addCobranzaBtn2.addEventListener('click', openCobranzaModal);
+        addCobranzaBtn2.addEventListener('click', function() {
+            if (!requireAuth('agregar cobranza')) return;
+            openCobranzaModal();
+        });
     }
     if (addProveedorBtn) {
-        addProveedorBtn.addEventListener('click', openProveedorModal);
+        addProveedorBtn.addEventListener('click', function() {
+            if (!requireAuth('agregar proveedor')) return;
+            openProveedorModal();
+        });
     }
     if (addProveedorBtn2) {
-        addProveedorBtn2.addEventListener('click', openProveedorModal);
+        addProveedorBtn2.addEventListener('click', function() {
+            if (!requireAuth('agregar proveedor')) return;
+            openProveedorModal();
+        });
     }
     if (addMessageBtn) {
-        addMessageBtn.addEventListener('click', openMessageModal);
+        addMessageBtn.addEventListener('click', function() {
+            if (!requireAuth('enviar mensaje')) return;
+            openMessageModal();
+        });
     }
     
     closeModals.forEach(btn => {
@@ -467,6 +743,7 @@ function setupModals() {
     
     if (printReciboBtn) {
         printReciboBtn.addEventListener('click', function() {
+            if (!requireAuth('imprimir recibo')) return;
             const reciboContent = document.getElementById('reciboContent');
             if (reciboContent) {
                 const reciboHTML = reciboContent.innerHTML;
@@ -493,6 +770,7 @@ function setupModals() {
     
     if (sendReciboBtn) {
         sendReciboBtn.addEventListener('click', function() {
+            if (!requireAuth('enviar recibo')) return;
             const reciboText = document.getElementById('reciboContent');
             if (reciboText) {
                 copyToClipboard(reciboText.innerText);
@@ -510,6 +788,8 @@ function setupForms() {
     if (companyForm) {
         companyForm.addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            if (!requireAuth('guardar datos empresa')) return;
             
             companyData = {
                 nombre: document.getElementById('companyName').value,
@@ -530,6 +810,8 @@ function setupForms() {
     if (cobranzaForm) {
         cobranzaForm.addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            if (!requireAuth('guardar cobranza')) return;
             
             // Formatear teléfono
             let telefono = document.getElementById('clientPhone').value;
@@ -583,6 +865,8 @@ function setupForms() {
     if (proveedorForm) {
         proveedorForm.addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            if (!requireAuth('guardar proveedor')) return;
             
             let telefono = document.getElementById('proveedorPhone').value;
             let telefonoLimpio = telefono.replace(/-/g, '');
@@ -638,6 +922,8 @@ function setupForms() {
         abonoForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
+            if (!requireAuth('registrar abono')) return;
+            
             const cobranzaId = document.getElementById('abonoCobranzaId').value;
             const cobranza = cobranzas.find(c => c.id === cobranzaId);
             
@@ -685,6 +971,8 @@ function setupForms() {
         pagoProveedorForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
+            if (!requireAuth('registrar pago')) return;
+            
             const proveedorId = document.getElementById('pagoProveedorId').value;
             const proveedor = proveedores.find(p => p.id === proveedorId);
             
@@ -731,6 +1019,8 @@ function setupForms() {
     if (messageForm) {
         messageForm.addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            if (!requireAuth('enviar mensaje')) return;
             
             const clientId = document.getElementById('messageClient').value;
             const client = cobranzas.find(c => c.id === clientId);
@@ -824,6 +1114,8 @@ function setupTabs() {
     tabs.forEach(tab => {
         tab.addEventListener('click', function() {
             const tabType = this.getAttribute('data-tab');
+            
+            if (!requireAuth('cambiar pestaña')) return;
             
             if (tabType.includes('prov')) {
                 // Tabs de proveedores
@@ -1104,7 +1396,7 @@ function enviarWhatsApp(cliente, mensaje) {
 
 // Actualizar UI de cobranzas
 function updateCobranzasUI() {
-    if (!cobranzasTableBody) return;
+    if (!cobranzasTableBody || !requireAuth('ver cobranzas')) return;
     
     cobranzasTableBody.innerHTML = '';
     
@@ -1124,6 +1416,7 @@ function updateCobranzasUI() {
         const addFirstBtn = document.getElementById('addFirstCobranza');
         if (addFirstBtn) {
             addFirstBtn.addEventListener('click', function() {
+                if (!requireAuth('agregar cobranza')) return;
                 openCobranzaModal();
             });
         }
@@ -1227,6 +1520,8 @@ function updateCobranzasUI() {
     
     document.querySelectorAll('.action-buttons .btn-icon').forEach(button => {
         button.addEventListener('click', function() {
+            if (!requireAuth('acciones cobranza')) return;
+            
             const cobranzaId = this.getAttribute('data-id');
             const action = this.querySelector('i').className;
             
@@ -1251,6 +1546,7 @@ function updateCobranzasUI() {
     // Event listeners para los nombres clickeables de clientes
     document.querySelectorAll('.clickable-name').forEach(name => {
         name.addEventListener('click', function() {
+            if (!requireAuth('ver ficha cliente')) return;
             const id = this.getAttribute('data-id');
             mostrarFichaCliente(id);
         });
@@ -1393,7 +1689,7 @@ function mostrarFichaCliente(cobranzaId) {
 
 // Actualizar UI de proveedores
 function updateProveedoresUI() {
-    if (!proveedoresTableBody) return;
+    if (!proveedoresTableBody || !requireAuth('ver proveedores')) return;
     
     proveedoresTableBody.innerHTML = '';
     
@@ -1413,6 +1709,7 @@ function updateProveedoresUI() {
         const addFirstBtn = document.getElementById('addFirstProveedor');
         if (addFirstBtn) {
             addFirstBtn.addEventListener('click', function() {
+                if (!requireAuth('agregar proveedor')) return;
                 openProveedorModal();
             });
         }
@@ -1510,6 +1807,8 @@ function updateProveedoresUI() {
     
     document.querySelectorAll('#proveedoresTableBody .action-buttons .btn-icon').forEach(button => {
         button.addEventListener('click', function() {
+            if (!requireAuth('acciones proveedor')) return;
+            
             const proveedorId = this.getAttribute('data-id');
             const action = this.querySelector('i').className;
             
@@ -1530,6 +1829,7 @@ function updateProveedoresUI() {
     // Event listeners para los nombres clickeables de proveedores
     document.querySelectorAll('.clickable-proveedor').forEach(name => {
         name.addEventListener('click', function() {
+            if (!requireAuth('ver ficha proveedor')) return;
             const id = this.getAttribute('data-id');
             mostrarFichaProveedor(id);
         });
@@ -2268,6 +2568,8 @@ function updateRecentActivityUI() {
 // Exportar a Excel - Cobranzas
 if (exportExcelBtn) {
     exportExcelBtn.addEventListener('click', function() {
+        if (!requireAuth('exportar excel')) return;
+        
         const data = cobranzas.map(cobranza => {
             const saldoPendiente = cobranza.saldoPendiente || calcularSaldoPendiente(cobranza);
             return {
@@ -2293,6 +2595,8 @@ if (exportExcelBtn) {
 // Exportar a Excel - Proveedores
 if (exportProveedoresBtn) {
     exportProveedoresBtn.addEventListener('click', function() {
+        if (!requireAuth('exportar excel')) return;
+        
         const data = proveedores.map(proveedor => {
             const saldoPendiente = proveedor.saldoPendiente || calcularSaldoPendienteProveedor(proveedor);
             return {
