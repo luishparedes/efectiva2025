@@ -7,7 +7,7 @@
 // ============================================
 
 const ACCESS_KEYS = [
-    "A1B3",  // Clave ejemplo 1
+    "A1B4",  // Clave ejemplo 1
     "C3D4",  // Clave ejemplo 2  
     "E5F6",  // Clave ejemplo 3
     "X9Y8",  // Clave ejemplo 4
